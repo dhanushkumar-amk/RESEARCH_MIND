@@ -100,35 +100,35 @@ export const AGENT_CONFIG = [
   {
     name: 'RETRIEVAL',
     label: 'Retrieval Agent',
-    description: 'Searches vector database',
+    description: 'Searches vector database for relevant chunks',
     color: '#3B82F6',
     icon: 'Database',
   },
   {
     name: 'RESEARCH',
     label: 'Research Agent',
-    description: 'Fetches external sources',
+    description: 'Fetches real-time data from external sources',
     color: '#8B5CF6',
     icon: 'Globe',
   },
   {
     name: 'CRITIC',
     label: 'Critic Agent',
-    description: 'Validates answer quality',
+    description: 'Validates and scores answer quality',
     color: '#F59E0B',
     icon: 'ShieldCheck',
   },
   {
     name: 'SUMMARY',
     label: 'Summary Agent',
-    description: 'Generates research report',
+    description: 'Generates structured research report',
     color: '#10B981',
     icon: 'FileText',
   },
   {
     name: 'MEMORY',
     label: 'Memory Agent',
-    description: 'Manages conversation context',
+    description: 'Manages conversation history and context',
     color: '#6B7280',
     icon: 'Brain',
   },
@@ -149,25 +149,25 @@ export const ERROR_MESSAGES = {
 
 export const QUERY_KEYS = {
   AUTH: {
-    USER: ['auth', 'user'] as const,
+    USER: ['auth', 'user'],
   },
   DOCUMENTS: {
-    ALL: ['documents'] as const,
-    DETAIL: (id: string) => ['documents', id] as const,
+    ALL: ['documents'],
+    DETAIL: (id: string) => ['documents', id],
   },
   REPORTS: {
-    ALL: ['reports'] as const,
-    DETAIL: (id: string) => ['reports', id] as const,
+    ALL: ['reports'],
+    DETAIL: (id: string) => ['reports', id],
   },
   ANALYTICS: {
-    METRICS: ['analytics', 'metrics'] as const,
-    HEALTH: ['analytics', 'health'] as const,
+    METRICS: ['analytics', 'metrics'],
+    HEALTH: ['analytics', 'health'],
   },
   CHAT: {
-    SESSIONS: ['chat', 'sessions'] as const,
-    SESSION: (id: string) => ['chat', 'sessions', id] as const,
+    SESSIONS: ['chat', 'sessions'],
+    SESSION: (id: string) => ['chat', 'sessions', id],
   },
-} as const
+}
 
 export const FILE_ICONS = {
   pdf: 'FileText',
@@ -314,56 +314,178 @@ export const MCP_TOOL_CATEGORIES = {
   news: ['newsapi'],
 } as const
 
+export const LLM_PROVIDERS = {
+  GROQ: 'groq',
+  GEMINI: 'gemini',
+  OPENROUTER: 'openrouter',
+  DEEPSEEK: 'deepseek',
+  PERPLEXITY: 'perplexity',
+} as const
+
+export const LLM_FALLBACK_ORDER = [
+  'groq',
+  'gemini',
+  'openrouter',
+  'deepseek',
+  'perplexity',
+] as const
+
 export const LLM_MODELS = [
+  // Groq Models (5)
   {
-    id: 'groq-llama3-70b',
-    name: 'Groq Llama 3 70B',
-    provider: 'Groq',
-    contextWindow: 8192,
+    id: 'groq-llama-3.3-70b-versatile',
+    name: 'Llama 3.3 70B Versatile',
+    provider: 'groq',
+    contextWindow: 32768,
     isFreeTier: true,
     priority: 1,
   },
   {
+    id: 'groq-llama3-70b',
+    name: 'Groq Llama 3 70B',
+    provider: 'groq',
+    contextWindow: 8192,
+    isFreeTier: true,
+    priority: 2,
+  },
+  {
     id: 'groq-mixtral-8x7b',
     name: 'Groq Mixtral 8x7B',
-    provider: 'Groq',
+    provider: 'groq',
     contextWindow: 32768,
+    isFreeTier: true,
+    priority: 3,
+  },
+  {
+    id: 'groq-llama3-8b',
+    name: 'Groq Llama 3 8B',
+    provider: 'groq',
+    contextWindow: 8192,
+    isFreeTier: true,
+    priority: 4,
+  },
+  {
+    id: 'groq-gemma-7b',
+    name: 'Groq Gemma 7B',
+    provider: 'groq',
+    contextWindow: 8192,
+    isFreeTier: true,
+    priority: 5,
+  },
+
+  // Gemini Models (3)
+  {
+    id: 'gemini-1.5-pro',
+    name: 'Gemini 1.5 Pro',
+    provider: 'gemini',
+    contextWindow: 2097152,
+    isFreeTier: true,
+    priority: 1,
+  },
+  {
+    id: 'gemini-1.5-flash',
+    name: 'Gemini 1.5 Flash',
+    provider: 'gemini',
+    contextWindow: 1048576,
     isFreeTier: true,
     priority: 2,
   },
   {
     id: 'gemini-pro',
     name: 'Gemini Pro',
-    provider: 'Google',
+    provider: 'gemini',
     contextWindow: 30720,
     isFreeTier: true,
     priority: 3,
   },
+
+  // OpenRouter Models (5)
   {
-    id: 'gemini-flash',
-    name: 'Gemini Flash',
-    provider: 'Google',
-    contextWindow: 1048576,
-    isFreeTier: true,
+    id: 'openrouter-claude-3-5-sonnet',
+    name: 'Claude 3.5 Sonnet',
+    provider: 'openrouter',
+    contextWindow: 200000,
+    isFreeTier: false,
+    priority: 1,
+  },
+  {
+    id: 'openrouter-llama-3-70b',
+    name: 'Llama 3 70B',
+    provider: 'openrouter',
+    contextWindow: 8192,
+    isFreeTier: false,
+    priority: 2,
+  },
+  {
+    id: 'openrouter-gpt-4o',
+    name: 'GPT-4o',
+    provider: 'openrouter',
+    contextWindow: 128000,
+    isFreeTier: false,
+    priority: 3,
+  },
+  {
+    id: 'openrouter-command-r-plus',
+    name: 'Command R+',
+    provider: 'openrouter',
+    contextWindow: 128000,
+    isFreeTier: false,
     priority: 4,
   },
   {
-    id: 'groq-llama3-8b',
-    name: 'Groq Llama 3 8B',
-    provider: 'Groq',
-    contextWindow: 8192,
-    isFreeTier: true,
+    id: 'openrouter-mistral-large',
+    name: 'Mistral Large',
+    provider: 'openrouter',
+    contextWindow: 32768,
+    isFreeTier: false,
     priority: 5,
   },
+
+  // DeepSeek Models (2)
   {
-    id: 'groq-gemma-7b',
-    name: 'Groq Gemma 7B',
-    provider: 'Groq',
-    contextWindow: 8192,
-    isFreeTier: true,
-    priority: 6,
+    id: 'deepseek-chat',
+    name: 'DeepSeek Chat',
+    provider: 'deepseek',
+    contextWindow: 64000,
+    isFreeTier: false,
+    priority: 1,
+  },
+  {
+    id: 'deepseek-coder',
+    name: 'DeepSeek Coder',
+    provider: 'deepseek',
+    contextWindow: 64000,
+    isFreeTier: false,
+    priority: 2,
+  },
+
+  // Perplexity Models (2)
+  {
+    id: 'perplexity-sonar-large',
+    name: 'Sonar Large Online',
+    provider: 'perplexity',
+    contextWindow: 32768,
+    isFreeTier: false,
+    priority: 1,
+  },
+  {
+    id: 'perplexity-sonar-medium',
+    name: 'Sonar Medium Chat',
+    provider: 'perplexity',
+    contextWindow: 16384,
+    isFreeTier: false,
+    priority: 2,
   },
 ] as const
+
+export const LLM_MODEL_COUNT = {
+  groq: 5,
+  gemini: 3,
+  openrouter: 5,
+  deepseek: 2,
+  perplexity: 2,
+  total: 17,
+} as const
 
 export const VECTOR_DB_CONFIG = {
   HOST: 'localhost',
@@ -385,4 +507,3 @@ export const EVALUATION_CONFIG = {
     MAX_RETRIES: 2,
   },
 } as const
-
