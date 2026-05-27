@@ -1,1 +1,1 @@
-export {}
+export { authStore } from '@/context/AuthContext';

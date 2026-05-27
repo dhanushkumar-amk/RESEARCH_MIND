@@ -19,9 +19,14 @@ export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: '/auth/login',
     REGISTER: '/auth/register',
+    VERIFY_EMAIL: '/auth/verify-email',
+    RESEND_VERIFICATION: '/auth/resend-verification',
     LOGOUT: '/auth/logout',
     REFRESH: '/auth/refresh',
     ME: '/auth/me',
+    FORGOT_PASSWORD: '/auth/forgot-password',
+    VERIFY_RESET_CODE: '/auth/verify-reset-code',
+    RESET_PASSWORD: '/auth/reset-password',
   },
   CHAT: {
     SEND: '/chat',

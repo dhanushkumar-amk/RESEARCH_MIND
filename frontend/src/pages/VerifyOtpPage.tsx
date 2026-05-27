@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ROUTES } from '@/constants';
+import useAuth from '@/hooks/useAuth';
 import * as Lucide from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const VerifyOtpPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { verifyEmail, resendVerification, verifyResetCode, forgotPassword } = useAuth();
   
   // Get email from router state if available
   const email = location.state?.email || 'your email';
@@ -78,7 +80,7 @@ const VerifyOtpPage = () => {
     }
   };
 
-  const handleVerify = (e: React.FormEvent) => {
+  const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     const otpCode = otp.join('');
     if (otpCode.length < 6) {
@@ -89,35 +91,44 @@ const VerifyOtpPage = () => {
     setError('');
     setIsLoading(true);
 
-    // Simulate verification
-    setTimeout(() => {
-      setIsLoading(false);
-      
+    try {
       if (fromForgotPassword) {
-        // Redirect to Reset Password Page
-        navigate(ROUTES.RESET_PASSWORD, { state: { email, verified: true } });
-      } else {
-        // Redirect to Onboarding Page (for signups) or Dashboard
-        navigate(ROUTES.ONBOARDING);
+        const result = await verifyResetCode({ email, code: otpCode });
+        setIsLoading(false);
+        navigate(ROUTES.RESET_PASSWORD, { state: { email, verified: true, resetToken: result.resetToken } });
+        return;
       }
-    }, 1200);
+
+      await verifyEmail({ email, code: otpCode });
+      setIsLoading(false);
+      navigate(ROUTES.ONBOARDING);
+    } catch (err) {
+      setIsLoading(false);
+      setError(err instanceof Error ? err.message : 'Unable to verify code.');
+    }
   };
 
-  const handleResendCode = () => {
+  const handleResendCode = async () => {
     if (resendTimer > 0) return;
     
     setError('');
     setSuccessMessage('');
     setIsResending(true);
 
-    // Simulate resending
-    setTimeout(() => {
+    try {
+      if (fromForgotPassword) {
+        await forgotPassword(email);
+      } else {
+        await resendVerification(email);
+      }
       setIsResending(false);
       setResendTimer(30);
       setSuccessMessage('A new verification code has been sent to your email.');
-      // Auto-clear success message after 5 seconds
       setTimeout(() => setSuccessMessage(''), 5000);
-    }, 1000);
+    } catch (err) {
+      setIsResending(false);
+      setError(err instanceof Error ? err.message : 'Unable to resend code.');
+    }
   };
 
   return (

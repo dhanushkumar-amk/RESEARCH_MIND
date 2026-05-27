@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ROUTES } from '@/constants';
+import useAuth from '@/hooks/useAuth';
 import * as Lucide from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const ResetPasswordPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { resetPassword } = useAuth();
   
   // Get email from router state if available
   const email = location.state?.email || 'your email';
+  const resetToken = location.state?.resetToken as string | undefined;
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -42,7 +45,7 @@ const ResetPasswordPage = () => {
 
   const strength = getPasswordStrength();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!password || !confirmPassword) {
       setError('Please fill in all fields');
@@ -62,16 +65,22 @@ const ResetPasswordPage = () => {
     setError('');
     setIsLoading(true);
 
-    // Simulate password update
-    setTimeout(() => {
+    try {
+      await resetPassword({
+        newPassword: password,
+        confirmPassword,
+        resetToken,
+      });
       setIsLoading(false);
       setIsSuccess(true);
       
-      // Auto redirect to login after 2 seconds
       setTimeout(() => {
         navigate(ROUTES.LOGIN);
       }, 2000);
-    }, 1500);
+    } catch (err) {
+      setIsLoading(false);
+      setError(err instanceof Error ? err.message : 'Unable to reset password.');
+    }
   };
 
   return (

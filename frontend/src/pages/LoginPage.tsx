@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/constants';
+import useAuth from '@/hooks/useAuth';
 import * as Lucide from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -13,7 +15,7 @@ const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
       setError('Please fill in all fields');
@@ -23,12 +25,14 @@ const LoginPage = () => {
     setError('');
     setIsLoading(true);
     
-    // Simulate login
-    setTimeout(() => {
+    try {
+      await login(email, password);
       setIsLoading(false);
-      // In a real app we'd set token/auth state
       navigate(ROUTES.DASHBOARD);
-    }, 1200);
+    } catch (err) {
+      setIsLoading(false);
+      setError(err instanceof Error ? err.message : 'Unable to sign in.');
+    }
   };
 
   return (

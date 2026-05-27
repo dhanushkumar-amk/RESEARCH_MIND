@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/constants';
+import useAuth from '@/hooks/useAuth';
 import * as Lucide from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const RegisterPage = () => {
   const navigate = useNavigate();
+  const { register } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,7 +17,7 @@ const RegisterPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !email || !password || !confirmPassword) {
       setError('Please fill in all fields');
@@ -35,13 +37,19 @@ const RegisterPage = () => {
     setError('');
     setIsLoading(true);
     
-    // Simulate signup, then redirect to OTP verification
-    setTimeout(() => {
+    try {
+      await register({
+        name,
+        email,
+        password,
+        confirmPassword,
+      });
       setIsLoading(false);
-      // In a real app we would send the verification email here
-      // Redirect to OTP verification page and pass the email so they can see where it was sent
       navigate(ROUTES.VERIFY_OTP, { state: { email, fromRegister: true } });
-    }, 1200);
+    } catch (err) {
+      setIsLoading(false);
+      setError(err instanceof Error ? err.message : 'Unable to create account.');
+    }
   };
 
   return (

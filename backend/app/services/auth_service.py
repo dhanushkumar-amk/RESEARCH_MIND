@@ -44,7 +44,7 @@ class AuthService:
         self.db = get_database()
 
     async def register(self, payload: RegisterRequest) -> dict[str, str | bool]:
-        validate_password_strength(payload.password)
+        self._ensure_password_strength(payload.password)
 
         now = _utcnow()
         user_document = {
@@ -198,7 +198,7 @@ class AuthService:
         email: str | None = None,
         code: str | None = None,
     ) -> dict[str, str]:
-        validate_password_strength(new_password)
+        self._ensure_password_strength(new_password)
 
         user = None
         if reset_token:
@@ -323,3 +323,13 @@ class AuthService:
                 detail="Invalid token type.",
             )
         return payload
+
+    @staticmethod
+    def _ensure_password_strength(password: str) -> None:
+        try:
+            validate_password_strength(password)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc

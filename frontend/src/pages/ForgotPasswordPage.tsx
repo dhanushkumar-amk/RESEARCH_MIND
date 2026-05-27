@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/constants';
+import useAuth from '@/hooks/useAuth';
 import * as Lucide from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const ForgotPasswordPage = () => {
   const navigate = useNavigate();
+  const { forgotPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
       setError('Please enter your email address');
@@ -20,12 +22,14 @@ const ForgotPasswordPage = () => {
     setError('');
     setIsLoading(true);
     
-    // Simulate sending OTP
-    setTimeout(() => {
+    try {
+      await forgotPassword(email);
       setIsLoading(false);
-      // Redirect to OTP verification page and set state showing we came from forgot password
       navigate(ROUTES.VERIFY_OTP, { state: { email, fromForgotPassword: true } });
-    }, 1200);
+    } catch (err) {
+      setIsLoading(false);
+      setError(err instanceof Error ? err.message : 'Unable to send reset code.');
+    }
   };
 
   return (
