@@ -177,7 +177,7 @@ const VerifyOtpPage = () => {
           <form className="space-y-6" onSubmit={handleVerify}>
             {/* OTP Boxes */}
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-455 mb-3 text-center font-mono">
+              <label className="block text-xs font-semibold text-neutral-700 mb-3 text-center">
                 Verification Code
               </label>
               <div className="flex justify-between gap-2 max-w-xs mx-auto">
@@ -193,7 +193,7 @@ const VerifyOtpPage = () => {
                     onChange={(e) => handleChange(e.target, index)}
                     onKeyDown={(e) => handleKeyDown(e, index)}
                     onPaste={handlePaste}
-                    className="w-10 h-12 text-center text-lg font-bold border border-neutral-200 rounded-[8px] focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 bg-white text-neutral-900 transition-colors"
+                    className="w-10 h-12 text-center text-lg font-bold border border-neutral-200 rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-neutral-955 shadow-sm transition-colors"
                   />
                 ))}
               </div>
@@ -203,7 +203,7 @@ const VerifyOtpPage = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#0a0a0a] text-white hover:bg-neutral-800 font-bold py-2.5 rounded-[6px] text-xs transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer relative"
+              className="w-full bg-neutral-950 text-white hover:bg-neutral-800 font-semibold py-2.5 rounded-md text-sm transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer relative"
             >
               {isLoading ? (
                 <>
@@ -212,7 +212,7 @@ const VerifyOtpPage = () => {
                 </>
               ) : (
                 <>
-                  <Lucide.ShieldAlert className="h-4 w-4" />
+                  <Lucide.ShieldCheck className="h-4 w-4" />
                   <span>Verify & Proceed</span>
                 </>
               )}

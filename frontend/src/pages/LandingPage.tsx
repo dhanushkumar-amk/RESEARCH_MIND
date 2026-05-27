@@ -329,7 +329,7 @@ const LandingPage = () => {
             transition={{ duration: 0.4, delay: 0.2 }}
             className="text-[15px] md:text-[16px] leading-[1.65] text-neutral-500 mb-8 max-w-2xl mx-auto"
           >
-            ResearchMind automates literature reviews, market intelligence, and citation audits. It assigns specialized agents to search, verify, and write reports with zero hallucinations.
+            A proprietary deep research workspace combining internal document knowledge (RAG) with real-time web search. Ingest documents and URLs to compile reports with zero hallucinations.
           </motion.p>
 
           {/* Call to Actions */}
@@ -670,20 +670,20 @@ const LandingPage = () => {
               <div className="bg-emerald-50 text-emerald-600 p-3 rounded-[8px] w-fit mb-5 group-hover:scale-110 transition-transform">
                 <Lucide.Cpu className="h-6 w-6" />
               </div>
-              <h3 className="text-lg font-bold text-[#0a0a0a] mb-2">Dual RAG Pipelines</h3>
+              <h3 className="text-lg font-bold text-[#0a0a0a] mb-2">Hybrid RAG Pipeline</h3>
               <p className="text-neutral-500 text-xs leading-relaxed">
-                Seamlessly merges static local database lookups (Qdrant semantic search) with real-time web querying (Tavily & DuckDuckGo protocols).
+                Merges vector semantic queries in Qdrant with BM25 searches and cross-encoder rerankers for precise context extraction.
               </p>
             </div>
 
             {/* Feature Card 2 */}
             <div className="bg-[#f9fafb] border border-neutral-200 hover:border-emerald-500/30 p-6 rounded-[12px] transition-all duration-300 hover:-translate-y-1 hover:shadow-md group relative overflow-hidden">
-              <div className="bg-emerald-50 text-emerald-600 p-3 rounded-[8px] w-fit mb-5 group-hover:scale-110 transition-transform">
+              <div className="bg-emerald-50 text-emerald-650 p-3 rounded-[8px] w-fit mb-5 group-hover:scale-110 transition-transform">
                 <Lucide.ShieldAlert className="h-6 w-6" />
               </div>
-              <h3 className="text-lg font-bold text-[#0a0a0a] mb-2">Automated Audit & Critique</h3>
+              <h3 className="text-lg font-bold text-[#0a0a0a] mb-2">5-Agent Collaboration</h3>
               <p className="text-neutral-500 text-xs leading-relaxed">
-                Our active Critic Agent scores generated contents using RAGAS thresholds. Rejects and rewrites answers with poor citation grounding.
+                Deconstructs queries through Retrieval, Research, Critic, Summary, and Memory agents scoring quality via RAGAS thresholds.
               </p>
             </div>
 
@@ -692,9 +692,9 @@ const LandingPage = () => {
               <div className="bg-emerald-50 text-emerald-600 p-3 rounded-[8px] w-fit mb-5 group-hover:scale-110 transition-transform">
                 <Lucide.Blocks className="h-6 w-6" />
               </div>
-              <h3 className="text-lg font-bold text-[#0a0a0a] mb-2">Model Agnostic Design</h3>
+              <h3 className="text-lg font-bold text-[#0a0a0a] mb-2">Secured LLM Gateway</h3>
               <p className="text-neutral-500 text-xs leading-relaxed">
-                Run fully local offline LLM pipelines via Ollama, or switch dynamically to Anthropic, Gemini, Groq, or DeepSeek API endpoints.
+                Employs LiteLLM gateway routing with a 10-model fallback chain, semantic query caching, and Guardrails PII filters.
               </p>
             </div>
 
@@ -1440,11 +1440,11 @@ const LandingPage = () => {
               <input
                 type="email"
                 placeholder="Enter your work email"
-                className="flex-1 border border-neutral-200 rounded-[6px] px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 bg-white text-neutral-900 placeholder-neutral-400 transition-colors"
+                className="flex-1 border border-neutral-200 rounded-md px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-neutral-955 placeholder-neutral-400"
               />
               <button
                 onClick={() => navigate(ROUTES.REGISTER)}
-                className="bg-[#0a0a0a] hover:bg-[#262626] text-white px-6 py-2.5 rounded-[6px] font-bold transition-all text-sm whitespace-nowrap"
+                className="bg-neutral-950 hover:bg-neutral-800 text-white px-6 py-2.5 rounded-md font-semibold transition-all text-sm whitespace-nowrap shadow-xs"
               >
                 Sign Up Free
               </button>
@@ -1509,50 +1509,50 @@ const LandingPage = () => {
                     <h3 className="text-base font-bold text-neutral-900">Upgrade to {selectedPlan.name}</h3>
                     <p className="text-xs text-neutral-500 mt-0.5">Amount due: <strong className="text-neutral-850 font-bold">{selectedPlan.price} / month</strong></p>
                   </div>
-
+                  
                   <div className="border-t border-neutral-100 pt-4 space-y-3">
                     <div>
-                      <label className="block text-[10px] font-bold text-neutral-450 uppercase mb-1">Cardholder Name</label>
+                      <label className="block text-xs font-semibold text-neutral-700 mb-1">Cardholder Name</label>
                       <input
                         type="text"
                         required
                         placeholder="John Doe"
-                        className="w-full border border-neutral-200 rounded-[6px] px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500 bg-white text-neutral-850"
+                        className="w-full border border-neutral-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-neutral-955 shadow-xs transition-all"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold text-neutral-450 uppercase mb-1">Card Number</label>
+                      <label className="block text-xs font-semibold text-neutral-700 mb-1">Card Number</label>
                       <div className="relative">
                         <input
                           type="text"
                           required
                           maxLength={19}
                           placeholder="•••• •••• •••• ••••"
-                          className="w-full border border-neutral-200 rounded-[6px] pl-3 pr-8 py-1.5 text-xs focus:outline-none focus:border-emerald-500 bg-white text-neutral-850 font-mono"
+                          className="w-full border border-neutral-200 rounded-md pl-3 pr-8 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-neutral-955 font-mono shadow-xs transition-all"
                         />
-                        <Lucide.CreditCard className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400" />
+                        <Lucide.CreditCard className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[10px] font-bold text-neutral-450 uppercase mb-1">Expiration</label>
+                        <label className="block text-xs font-semibold text-neutral-700 mb-1">Expiration</label>
                         <input
                           type="text"
                           required
                           placeholder="MM/YY"
-                          className="w-full border border-neutral-200 rounded-[6px] px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500 bg-white text-neutral-850 font-mono"
+                          className="w-full border border-neutral-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-neutral-955 font-mono shadow-xs transition-all"
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-neutral-450 uppercase mb-1">CVC</label>
+                        <label className="block text-xs font-semibold text-neutral-700 mb-1">CVC</label>
                         <input
                           type="password"
                           required
                           maxLength={4}
                           placeholder="•••"
-                          className="w-full border border-neutral-200 rounded-[6px] px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500 bg-white text-neutral-850 font-mono"
+                          className="w-full border border-neutral-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-neutral-955 font-mono shadow-xs transition-all"
                         />
                       </div>
                     </div>
@@ -1562,14 +1562,14 @@ const LandingPage = () => {
                     <button
                       type="button"
                       onClick={() => setIsPaymentModalOpen(false)}
-                      className="flex-1 border border-neutral-200 hover:bg-neutral-50 text-neutral-600 rounded-[6px] py-2 text-xs font-semibold text-center transition-colors"
+                      className="flex-1 border border-neutral-200 hover:bg-neutral-50 text-neutral-600 rounded-md py-2 text-sm font-semibold text-center transition-colors"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={paymentLoading}
-                      className="flex-1 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-450 text-white rounded-[6px] py-2 text-xs font-bold text-center transition-colors flex items-center justify-center gap-1.5"
+                      className="flex-1 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-450 text-white rounded-md py-2 text-sm font-semibold text-center transition-colors flex items-center justify-center gap-1.5"
                     >
                       {paymentLoading ? (
                         <>

@@ -138,11 +138,11 @@ const ResetPasswordPage = () => {
               <form className="space-y-4" onSubmit={handleSubmit}>
                 {/* New Password */}
                 <div>
-                  <label htmlFor="password" className="block text-[11px] font-bold uppercase tracking-wider text-neutral-450 mb-1.5 font-mono">
+                  <label htmlFor="password" className="block text-xs font-semibold text-neutral-700 mb-1.5">
                     New Password
                   </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-400">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400">
                       <Lucide.Lock className="h-4 w-4" />
                     </div>
                     <input
@@ -153,7 +153,7 @@ const ResetPasswordPage = () => {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••••••"
-                      className="block w-full pl-10 pr-10 py-2 border border-neutral-200 rounded-[6px] text-xs focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 bg-white text-neutral-900 placeholder-neutral-400 transition-colors"
+                      className="block w-full pl-10 pr-10 py-2 border border-neutral-200 rounded-md text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-neutral-955 placeholder-neutral-400"
                     />
                     <button
                       type="button"
@@ -186,11 +186,11 @@ const ResetPasswordPage = () => {
 
                 {/* Confirm New Password */}
                 <div>
-                  <label htmlFor="confirmPassword" className="block text-[11px] font-bold uppercase tracking-wider text-neutral-450 mb-1.5 font-mono">
+                  <label htmlFor="confirmPassword" className="block text-xs font-semibold text-neutral-700 mb-1.5">
                     Confirm New Password
                   </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-400">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400">
                       <Lucide.LockKeyhole className="h-4 w-4" />
                     </div>
                     <input
@@ -201,7 +201,7 @@ const ResetPasswordPage = () => {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="••••••••••••"
-                      className="block w-full pl-10 pr-3 py-2 border border-neutral-200 rounded-[6px] text-xs focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 bg-white text-neutral-900 placeholder-neutral-400 transition-colors"
+                      className="block w-full pl-10 pr-3 py-2 border border-neutral-200 rounded-md text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-neutral-955 placeholder-neutral-400"
                     />
                   </div>
                 </div>
@@ -210,7 +210,7 @@ const ResetPasswordPage = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-[#0a0a0a] text-white hover:bg-neutral-800 font-bold py-2.5 rounded-[6px] text-xs transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer relative"
+                  className="w-full bg-neutral-950 text-white hover:bg-neutral-800 font-semibold py-2.5 rounded-md text-sm transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer relative"
                 >
                   {isLoading ? (
                     <>

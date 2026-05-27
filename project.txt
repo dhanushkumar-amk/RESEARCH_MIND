@@ -1,5 +1,35 @@
 ## ResearchMind — Complete Information
 
+> [!IMPORTANT]
+> **PROPRIETARY & CLOSED-SOURCE**
+> This project is strictly proprietary, confidential, and closed-source. Unauthorized copying, distribution, modification, or public open-source publication of this repository is strictly prohibited. All rights reserved.
+
+---
+
+## 🛠️ Completed Progress & Implementation Log
+
+The following features and codebase infrastructure components have been fully implemented and verified:
+
+### 1. Project Scaffolding & Setup
+* Organized modular architecture dividing the project into `/frontend` (React, Vite, TS, Tailwind) and `/backend` (FastAPI).
+* Set up global application entry wrappers in `main.tsx` including `QueryClientProvider` for server state and `Toaster` for toast notifications.
+
+### 2. Client-Side Routing & Authentication Guards
+* Structured React Router v6 paths for public and protected boundaries inside `App.tsx`.
+* Implemented the custom `ProtectedRoute.tsx` interceptor component to secure routes against unauthenticated sessions.
+
+### 3. Dynamic Landing Page & Interactive Demos
+* Built a responsive landing page highlighting deep research agent workflows, live data charts (radar and area graphs via `recharts`), and pipeline throughput diagnostics.
+* Created interactive demo tabs simulating live WebSearch, Retrieval, and Critic agent steps.
+* Integrated a secure checkout modal with credit card fields and animated success alerts to handle payment tier upgrades.
+
+### 4. Credential-Based Auth Forms (Shadcn UI Styling)
+* Implemented custom authentication components styled manually to match **Shadcn UI** aesthetics (crisp thin borders, modern labels, ring outlines, and micro-shadows) without heavy external library bloat.
+* **Direct Credentials Login**: Built custom login fields with direct email/password routing. *Removed third-party Google and GitHub sign-ins to enforce proprietary workspace control.*
+* **Register Flow**: Created sign-up forms with Terms of Service validation.
+* **OTP Verification**: Designed a 6-digit auto-forwarding OTP code block.
+* **Password Recoveries**: Built recovery code generation pages and a reset page equipped with interactive password strength scoring.
+
 ---
 
 ## 1. What is ResearchMind
