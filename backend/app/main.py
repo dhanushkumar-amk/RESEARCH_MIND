@@ -1,4 +1,6 @@
-from fastapi import FastAPI, UploadFile, File, Form, status
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, HttpUrl
@@ -6,20 +8,34 @@ from typing import List, Optional
 import asyncio
 import time
 
+from app.api.routes.auth import router as auth_router
+from app.core.config import settings
+from app.core.database import close_mongo_connection, connect_to_mongo
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    await connect_to_mongo()
+    yield
+    await close_mongo_connection()
+
 app = FastAPI(
-    title="ResearchMind API",
+    title=settings.app_name,
     description="Backend API for proprietary ResearchMind deep research agent workspace",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 # CORS middleware to allow connection from the React frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(auth_router)
 
 # Simple schemas for inputs
 class ChatRequest(BaseModel):

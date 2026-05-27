@@ -1,0 +1,7 @@
+INFO:     Started server process [11240]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+Email not configured. OTP for curl.auth.1779918855@example.com: 783177
+Email not configured. OTP for curl.auth.1779918855@example.com: 457979
+Email not configured. OTP for curl.auth.1779918855@example.com: 530413
