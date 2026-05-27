@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { ROUTES } from '@/constants';
 import ProtectedRoute from '@/components/common/ProtectedRoute';
+import { AppShell } from '@/components/layout';
 
 import LandingPage from '@/pages/LandingPage';
 import LoginPage from '@/pages/LoginPage';
@@ -27,14 +28,16 @@ function App() {
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
-          <Route path={ROUTES.ONBOARDING} element={<OnboardingPage />} />
-          <Route path={ROUTES.DASHBOARD} element={<DashboardPage />} />
-          <Route path={ROUTES.RESEARCH} element={<ResearchPage />} />
-          <Route path={ROUTES.LIBRARY} element={<LibraryPage />} />
-          <Route path={ROUTES.REPORT} element={<ReportPage />} />
-          <Route path={ROUTES.ANALYTICS} element={<AnalyticsPage />} />
-          <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
-          <Route path={ROUTES.NOT_FOUND} element={<NotFoundPage />} />
+          <Route element={<AppShell><Outlet /></AppShell>}>
+            <Route path={ROUTES.ONBOARDING} element={<OnboardingPage />} />
+            <Route path={ROUTES.DASHBOARD} element={<DashboardPage />} />
+            <Route path={ROUTES.RESEARCH} element={<ResearchPage />} />
+            <Route path={ROUTES.LIBRARY} element={<LibraryPage />} />
+            <Route path={ROUTES.REPORT} element={<ReportPage />} />
+            <Route path={ROUTES.ANALYTICS} element={<AnalyticsPage />} />
+            <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
+            <Route path={ROUTES.NOT_FOUND} element={<NotFoundPage />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>
@@ -42,3 +45,4 @@ function App() {
 }
 
 export default App;
+
