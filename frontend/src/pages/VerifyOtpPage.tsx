@@ -11,7 +11,6 @@ const VerifyOtpPage = () => {
   // Get email from router state if available
   const email = location.state?.email || 'your email';
   const fromForgotPassword = location.state?.fromForgotPassword || false;
-  const fromRegister = location.state?.fromRegister || false;
 
   const [otp, setOtp] = useState<string[]>(new Array(6).fill(''));
   const [isLoading, setIsLoading] = useState(false);

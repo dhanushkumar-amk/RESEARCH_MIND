@@ -165,7 +165,7 @@ const LandingPage = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'radar' | 'throughput'>('radar');
   const [selectedDemo, setSelectedDemo] = useState(DEMO_QUERIES[0]);
-  const [demoStepIndex, setDemoStepIndex] = useState(0);
+  const [, setDemoStepIndex] = useState(0);
   const [demoRunning, setDemoRunning] = useState(true);
 
   // Payment/Checkout Modal States

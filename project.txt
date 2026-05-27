@@ -1,0 +1,460 @@
+## ResearchMind — Complete Information
+
+---
+
+## 1. What is ResearchMind
+
+A production-grade AI research assistant that combines internal document knowledge with real-time external research. User uploads any document or pastes any URL — system understands it deeply, answers questions, and generates structured research reports automatically using 5 specialized AI agents.
+
+---
+
+## 2. Problem it Solves
+
+| Problem | Solution |
+|---|---|
+| Searching multiple sources manually | 10 MCP tools search automatically |
+| Reading entire documents | RAG retrieves only relevant chunks |
+| LLM hallucinations | Critic agent + RAGAS scoring |
+| No source grounding | Every answer has source links |
+| Repeated expensive LLM calls | Semantic cache — 80% cost saved |
+| Pipeline breaks in production | 10-model fallback — 99.9% uptime |
+
+---
+
+## 3. Core Features
+
+1. **Document Ingestion** — PDF, Word, Excel, YouTube, websites
+2. **RAG Pipeline** — Hybrid search + reranking + semantic chunking
+3. **5-Agent System** — Retrieval, Research, Critic, Summary, Memory
+4. **10 MCP Tools** — Tavily, Wikipedia, ArXiv, PubMed, HackerNews
+5. **LLM Gateway** — LiteLLM → LLMGate, 10-model fallback
+6. **Security Layer** — Guardrails AI + prompt injection defense
+7. **Context Engineering** — Token budget + summary memory
+8. **Evaluation** — RAGAS + LangSmith + MLflow
+9. **Research Reports** — Structured output with sources
+10. **Real-time Streaming** — SSE token by token response
+
+---
+
+## 4. 5-Agent Architecture
+
+```
+User Query
+     ↓
+Retrieval Agent ←→ Research Agent (parallel)
+     ↓
+Critic Agent — scores quality ≥ 7/10
+     ↓
+Summary Agent — generates report
+     ↓
+Memory Agent — saves context
+     ↓
+Answer streamed to user
+```
+
+---
+
+## 5. RAG Pipeline Flow
+
+```
+Document uploaded
+     ↓
+ETL — extract text
+     ↓
+Semantic chunking
+     ↓
+HuggingFace embedding — local, free
+     ↓
+Store in Qdrant + AWS S3
+     ↓
+User asks question
+     ↓
+Hybrid search — BM25 + Vector
+     ↓
+Cross-encoder reranking
+     ↓
+Context budget management
+     ↓
+Pass to agents
+```
+
+---
+
+## 6. MCP Tools
+
+| Tool | Purpose |
+|---|---|
+| Tavily | Real-time web search |
+| Wikipedia | Background knowledge |
+| ArXiv | Academic papers |
+| PubMed | Medical research |
+| HackerNews | Tech discussions |
+| DuckDuckGo | Web search fallback |
+| YouTube Transcript | Video content |
+| Reddit | Community discussions |
+| GitHub | Code and technical docs |
+| News API | Current news |
+
+---
+
+## 7. Security Architecture
+
+**Input Layer:**
+- Prompt injection detection
+- Jailbreak blocking
+- Topic filtering
+- PII detection
+
+**Output Layer:**
+- PII scrubbing
+- Hallucination check
+- Format validation
+- Toxic content filter
+
+---
+
+## 8. Monitoring Stack
+
+| Tool | What it Monitors |
+|---|---|
+| LangSmith | Every agent step, token cost, latency |
+| MLflow | Experiments, chunk size, k value, best config |
+| RAGAS | Faithfulness, Answer Relevance, Context Relevance |
+
+---
+
+## 9. Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Agents | LangGraph |
+| RAG | LangChain |
+| Vector DB | Qdrant |
+| Embeddings | HuggingFace all-MiniLM-L6-v2 |
+| LLM Gateway | LiteLLM → LLMGate |
+| LLM Providers | Groq + Gemini free tier |
+| Security | Guardrails AI |
+| Monitoring | LangSmith + MLflow |
+| ETL | APScheduler + pdfplumber + BeautifulSoup |
+| Backend | FastAPI + Python |
+| Frontend | React.js + TailwindCSS |
+| Storage | AWS S3 |
+| Deployment | AWS EC2 + Docker + Nginx |
+| CI/CD | GitHub Actions |
+
+---
+
+## 10. API Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | /upload | Upload document |
+| POST | /ingest/url | Ingest website |
+| POST | /ingest/youtube | Ingest YouTube |
+| POST | /chat | Send query |
+| GET | /chat/stream | SSE streaming |
+| GET | /report/{id} | Get report |
+| GET | /sources | List sources |
+| DELETE | /sources/{id} | Remove source |
+| GET | /health | Health check |
+| GET | /metrics | RAGAS metrics |
+
+---
+
+## 11. Non-Functional Requirements
+
+| Requirement | Target |
+|---|---|
+| First token latency | Under 3 seconds |
+| Cache hit response | Under 500ms |
+| Uptime | 99.9% |
+| Embedding cost | Zero — local |
+| LLM cost | Zero — free tier |
+| Docker image | Under 500MB |
+
+---
+
+## 12. Build Order
+
+| Step | What | Time |
+|---|---|---|
+| 1 | ETL Pipeline — document ingestion | 3 days |
+| 2 | RAG Pipeline — hybrid search + reranking | 3 days |
+| 3 | 5-Agent LangGraph system | 4 days |
+| 4 | MCP tools integration | 2 days |
+| 5 | LLM Gateway — LiteLLM | 1 day |
+| 6 | Security — Guardrails AI | 2 days |
+| 7 | Context Engineering | 1 day |
+| 8 | Evaluation — RAGAS + MLflow | 2 days |
+| 9 | React frontend + streaming | 3 days |
+| 10 | AWS deployment + CI/CD | 2 days |
+
+**Total: ~3-4 weeks**
+
+---
+
+## 13. Success Metrics
+
+- RAGAS Faithfulness above 0.85
+- Cache hit rate above 40%
+- Zero prompt injections passing through
+- All 10 MCP tools working
+- Live on AWS with public URL
+- Full LangSmith traces for every request
+
+---
+
+
+
+## ResearchMind — Complete Feature List
+
+---
+
+## 1. Document Ingestion Features
+- PDF upload and text extraction
+- Word document upload
+- Excel file upload
+- TXT file upload
+- Website URL scraping
+- YouTube video transcript extraction
+- Plain text paste
+- Bulk upload — multiple files at once
+- Auto nightly refresh via APScheduler
+- Duplicate detection — skip already ingested docs
+- File size validation
+- Upload progress indicator
+- AWS S3 storage for all raw files
+
+---
+
+## 2. RAG Pipeline Features
+- Semantic chunking — intelligent text splitting
+- HuggingFace local embeddings — zero cost
+- Qdrant vector DB storage
+- BM25 keyword search
+- Vector semantic search
+- Hybrid search — BM25 + Vector combined
+- Cross-encoder reranking
+- Top-k retrieval configuration
+- Context budget management
+- Source tracking per chunk
+- Chunk overlap configuration
+- Metadata filtering — filter by document, date, type
+
+---
+
+## 3. Agent Features
+- Retrieval Agent — internal Qdrant search
+- Research Agent — external MCP tool search
+- Critic Agent — quality scoring ≥ 7/10
+- Summary Agent — structured report generation
+- Memory Agent — conversation history management
+- Parallel agent execution — faster response
+- Agent retry on failure
+- Agent step logging via LangSmith
+- Human in the loop — pause for approval on low confidence
+- Agent scratchpad visibility
+
+---
+
+## 4. MCP Research Tool Features
+- Tavily — real-time web search
+- Wikipedia — background knowledge
+- ArXiv — academic papers search
+- PubMed — medical research papers
+- HackerNews — tech discussions
+- DuckDuckGo — web search fallback
+- YouTube Transcript — video content
+- Reddit — community discussions
+- GitHub — code and technical docs
+- News API — current news
+- Smart tool selection — agent picks relevant tools only
+- Tool result deduplication
+- Tool failure handling — skip and continue
+
+---
+
+## 5. LLM Gateway Features
+- LiteLLM integration — first version
+- LLMGate integration — final version
+- 10-model fallback chain
+- Groq Llama 3.1 70B — primary
+- Gemini 1.5 Flash — fallback 1
+- Mixtral 8x7B — fallback 2
+- Gemini 1.5 Pro — fallback 3
+- Llama 3.1 8B — fallback 4
+- Gemma 2 9B — fallback 5
+- Qwen 2.5 72B — fallback 6
+- Semantic cache — same meaning → cached response
+- Exact cache — identical query → instant response
+- Per-user rate limiting
+- Token cost tracking per request
+- Automatic model switching on rate limit
+- 99.9% uptime guarantee
+
+---
+
+## 6. Security Features
+- Prompt injection detection
+- Direct injection blocking
+- Indirect injection blocking — malicious docs
+- Jailbreak attempt detection
+- Topic filtering — research domain only
+- PII detection in user input
+- PII scrubbing from LLM output
+- API key authentication
+- Rate limiting per user
+- Input length validation
+- Output format validation
+- Toxic content filtering
+- All blocked attempts logged to LangSmith
+
+---
+
+## 7. Context Engineering Features
+- Token budget allocation — 20/30/40/10 split
+- Sliding window conversation history
+- Summary memory — compress old history
+- Entity memory — track key facts
+- Dynamic context injection — user profile, session data
+- Few-shot examples in context
+- Structured context formatting — XML tags
+- Context compression via LLMChainExtractor
+- Long document handling — map-reduce strategy
+
+---
+
+## 8. Evaluation Features
+- RAGAS Faithfulness score
+- RAGAS Answer Relevance score
+- RAGAS Context Relevance score
+- Per-request quality scoring
+- Quality threshold — reject below 7/10
+- MLflow experiment tracking
+- Chunk size experiment comparison
+- Embedding model comparison
+- Retrieval k-value comparison
+- Best config auto-selection
+- Quality trend dashboard
+
+---
+
+## 9. Monitoring Features
+- LangSmith full pipeline tracing
+- Every agent step traced
+- Token cost per request
+- Latency per agent
+- Failed request logging
+- Alert on quality drop
+- Alert on latency spike
+- Alert on cost spike
+- Real-time health dashboard
+- Request history log
+- Error rate tracking
+
+---
+
+## 10. Research Report Features
+- Executive summary
+- Key findings list
+- Detailed analysis section
+- Source list with links
+- Confidence score per finding
+- Related topics suggestions
+- Export report as PDF
+- Export report as Markdown
+- Share report via link
+- Report history saved per session
+
+---
+
+## 11. Chat Interface Features
+- Real-time SSE streaming — token by token
+- Conversation history display
+- Follow-up question support
+- Suggested follow-up questions
+- Source citations inline
+- Copy answer button
+- Thumbs up/down feedback
+- Clear conversation button
+- Session persistence
+
+---
+
+## 12. Document Management Features
+- List all ingested documents
+- Search documents by name
+- Filter by file type
+- Filter by date ingested
+- Delete specific document
+- Re-ingest updated document
+- Document metadata display
+- Storage size per document
+- Total knowledge base size
+
+---
+
+## 13. API Features
+- POST /upload — file upload
+- POST /ingest/url — website ingestion
+- POST /ingest/youtube — YouTube ingestion
+- POST /chat — query endpoint
+- GET /chat/stream — SSE streaming
+- GET /report/{id} — fetch report
+- GET /sources — list all sources
+- DELETE /sources/{id} — remove source
+- GET /health — health check
+- GET /metrics — RAGAS + cost metrics
+- REST API documentation — auto via FastAPI
+
+---
+
+## 14. Deployment Features
+- Docker containerization
+- Docker Compose — single command start
+- AWS EC2 deployment
+- AWS S3 file storage
+- Nginx reverse proxy
+- Systemd process management
+- GitHub Actions CI/CD
+- Environment variable management
+- Auto restart on crash
+- Health check endpoint
+- Zero downtime deployment
+
+---
+
+## 15. Frontend Features
+- Clean research dashboard
+- Document upload drag and drop
+- Chat interface with streaming
+- Research report viewer
+- Sources panel with links
+- Metrics dashboard — RAGAS scores
+- Cost tracker display
+- Agent step visualizer
+- Mobile responsive
+---
+
+## 📊 Total Feature Count
+
+| Category | Features |
+|---|---|
+| Document Ingestion | 13 |
+| RAG Pipeline | 12 |
+| Agent System | 10 |
+| MCP Tools | 13 |
+| LLM Gateway | 16 |
+| Security | 13 |
+| Context Engineering | 9 |
+| Evaluation | 11 |
+| Monitoring | 11 |
+| Research Reports | 10 |
+| Chat Interface | 9 |
+| Document Management | 10 |
+| API | 11 |
+| Deployment | 10 |
+| Frontend | 10 |
+| **Total** | **168 features** |
+
+---
