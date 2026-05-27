@@ -6,6 +6,8 @@ import LandingPage from '@/pages/LandingPage';
 import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
+import VerifyOtpPage from '@/pages/VerifyOtpPage';
+import ResetPasswordPage from '@/pages/ResetPasswordPage';
 import OnboardingPage from '@/pages/OnboardingPage';
 import DashboardPage from '@/pages/DashboardPage';
 import ResearchPage from '@/pages/ResearchPage';
@@ -24,6 +26,8 @@ function App() {
         <Route path={ROUTES.LOGIN} element={<LoginPage />} />
         <Route path={ROUTES.REGISTER} element={<RegisterPage />} />
         <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPasswordPage />} />
+        <Route path={ROUTES.VERIFY_OTP} element={<VerifyOtpPage />} />
+        <Route path={ROUTES.RESET_PASSWORD} element={<ResetPasswordPage />} />
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
