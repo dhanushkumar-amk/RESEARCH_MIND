@@ -135,3 +135,105 @@ class ExtractorService:
             status_code=400,
             detail="Failed to decode text file. Ensure it is encoded in UTF-8 or standard ASCII."
         )
+
+    def extract_url(self, url: str) -> str:
+        """
+        Step 4: Web HTML scraping using trafilatura with BeautifulSoup as a fallback.
+        """
+        import trafilatura
+        from bs4 import BeautifulSoup
+        import httpx
+
+        # Try trafilatura first (advanced content extraction, strips ads/navigation)
+        try:
+            downloaded = trafilatura.fetch_url(url)
+            if downloaded:
+                result = trafilatura.extract(downloaded)
+                if result:
+                    return result.strip()
+        except Exception as e:
+            print(f"trafilatura scraping failed for {url}: {e}. Trying BeautifulSoup fallback...")
+
+        # Fallback to standard HTTP request + BeautifulSoup
+        try:
+            with httpx.Client(timeout=10.0, follow_redirects=True) as client:
+                response = client.get(url, headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                })
+                response.raise_for_status()
+                
+            soup = BeautifulSoup(response.text, "html.parser")
+            
+            # Remove script and style elements
+            for script in soup(["script", "style", "nav", "header", "footer"]):
+                script.decompose()
+                
+            text = soup.get_text(separator="\n")
+            # Clean up whitespace
+            lines = (line.strip() for line in text.splitlines())
+            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+            clean_text = "\n".join(chunk for chunk in chunks if chunk)
+            
+            if not clean_text:
+                raise HTTPException(status_code=400, detail="Webpage scraped text is empty.")
+            return clean_text
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to scrape webpage text: {str(e)}"
+            )
+
+    def extract_youtube(self, url: str) -> str:
+        """
+        Step 5: YouTube transcript extraction using youtube-transcript-api.
+        """
+        from youtube_transcript_api import YouTubeTranscriptApi
+        from urllib.parse import urlparse, parse_qs
+        import re
+
+        # Extract video ID from URL
+        video_id = None
+        parsed = urlparse(url)
+        if "youtube.com" in parsed.netloc:
+            if parsed.path == "/watch":
+                video_id = parse_qs(parsed.query).get("v", [None])[0]
+            elif parsed.path.startswith(("/embed/", "/v/")):
+                video_id = parsed.path.split("/")[2]
+        elif "youtu.be" in parsed.netloc:
+            video_id = parsed.path.lstrip("/")
+
+        # Regex fallback just in case
+        if not video_id:
+            match = re.search(r"(?:v=|\/)([0-9A-Za-z_-]{11}).*", url)
+            if match:
+                video_id = match.group(1)
+
+        if not video_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Could not extract a valid YouTube video ID from the provided link."
+            )
+
+        try:
+            # Try to fetch transcript in English, then fallback to other languages / auto-generated
+            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            try:
+                transcript = transcript_list.find_transcript(['en'])
+            except Exception:
+                # Fallback to any available language
+                transcript = next(iter(transcript_list))
+                
+            data = transcript.fetch()
+            text_pieces = [entry["text"] for entry in data]
+            clean_text = " ".join(text_pieces).strip()
+            
+            if not clean_text:
+                raise HTTPException(status_code=400, detail="YouTube video transcript is empty.")
+            return clean_text
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to fetch YouTube transcript. Ensure subtitles are enabled for this video. Details: {str(e)}"
+            )
+
+

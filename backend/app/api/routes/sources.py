@@ -1,17 +1,27 @@
 from datetime import datetime, timezone
 import uuid
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, BackgroundTasks
 from bson import ObjectId
 from typing import List
 
 from app.dependencies.auth import get_current_user
 from app.core.database import get_database
 from app.services.s3_service import S3Service
+from app.services.vector_service import VectorService
 from app.schemas.sources import SourceResponse, UrlIngestRequest, YoutubeIngestRequest
 from urllib.parse import urlparse
 
 router = APIRouter(prefix="", tags=["Sources"])
 s3_service = S3Service()
+vector_service = VectorService()
+
+from app.services.extractor_service import ExtractorService
+from app.services.chunker_service import ChunkerService
+from app.services.embedding_service import EmbeddingService
+
+extractor_service = ExtractorService()
+chunker_service = ChunkerService()
+embedding_service = EmbeddingService()
 
 # Allowed file extensions
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".txt"}
@@ -26,8 +36,74 @@ def _serialize_mongo_doc(doc: dict) -> dict:
         del doc["_id"]
     return doc
 
+async def run_ingestion_pipeline(
+    source_id: ObjectId,
+    user_id: str,
+    file_bytes: bytes = None,
+    file_type: str = None,
+    url: str = None
+):
+    """
+    Asynchronous ETL pipeline:
+    1. Extract (parse document/URL/YouTube text)
+    2. Chunk (clean and split text semantically)
+    3. Embed (generate 384d vector embeddings)
+    4. Index (store chunks + vectors in MongoDB)
+    """
+    db = get_database()
+    
+    async def update_status(status_str: str, error_reason: str = None):
+        await db.sources.update_one(
+            {"_id": source_id},
+            {"$set": {
+                "status": status_str,
+                "error_reason": error_reason,
+                "updated_at": _utcnow()
+            }}
+        )
+
+    try:
+        # --- Step 1: Extraction ---
+        await update_status("extracting")
+        
+        extracted_text = ""
+        if file_bytes:
+            extracted_text = extractor_service.extract_text(file_bytes, file_type)
+        elif url and file_type == "url":
+            extracted_text = extractor_service.extract_url(url)
+        elif url and file_type == "youtube":
+            extracted_text = extractor_service.extract_youtube(url)
+        else:
+            raise ValueError("No valid ingestion source input (bytes or URL) was provided.")
+
+        # --- Step 2: Chunking ---
+        await update_status("chunking")
+        chunks = chunker_service.split_text(extracted_text)
+        if not chunks:
+            raise ValueError("No text chunks could be extracted from this source.")
+
+        # --- Step 3: Embedding ---
+        await update_status("embedding")
+        chunk_texts = [c["text"] for c in chunks]
+        embeddings = embedding_service.get_embeddings(chunk_texts)
+
+        # --- Step 4: Indexing ---
+        await update_status("indexing")
+        await vector_service.save_chunks(source_id, user_id, chunks, embeddings)
+
+        # --- Done ---
+        await update_status("indexed")
+        print(f"Successfully processed and indexed source {source_id} for user {user_id}")
+
+    except Exception as e:
+        error_msg = str(e)
+        print(f"Error processing source {source_id}: {error_msg}")
+        await update_status("failed", error_reason=error_msg)
+
+
 @router.post("/upload", response_model=SourceResponse, status_code=status.HTTP_201_CREATED)
 async def upload_document(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
@@ -48,6 +124,9 @@ async def upload_document(
     user_id = str(current_user["_id"])
     source_id = ObjectId()
     s3_key = f"{user_id}/{source_id}{file_ext}"
+
+    # Read bytes before we upload, so we can pass them to the background task
+    file_bytes = await file.read()
 
     # 3. Upload to S3 / Local Storage
     s3_url = await s3_service.upload_file(file, s3_key)
@@ -70,11 +149,21 @@ async def upload_document(
     db = get_database()
     await db.sources.insert_one(source_doc)
 
+    # Trigger background ingestion pipeline
+    background_tasks.add_task(
+        run_ingestion_pipeline,
+        source_id=source_id,
+        user_id=user_id,
+        file_bytes=file_bytes,
+        file_type=file_ext.lstrip(".")
+    )
+
     return _serialize_mongo_doc(source_doc)
 
 
 @router.post("/ingest/url", response_model=SourceResponse, status_code=status.HTTP_201_CREATED)
 async def ingest_url(
+    background_tasks: BackgroundTasks,
     payload: UrlIngestRequest,
     current_user: dict = Depends(get_current_user)
 ):
@@ -113,11 +202,23 @@ async def ingest_url(
 
     db = get_database()
     await db.sources.insert_one(source_doc)
+
+    # Trigger background ingestion pipeline
+    background_tasks.add_task(
+        run_ingestion_pipeline,
+        source_id=source_id,
+        user_id=user_id,
+        file_bytes=None,
+        file_type="url",
+        url=url
+    )
+
     return _serialize_mongo_doc(source_doc)
 
 
 @router.post("/ingest/youtube", response_model=SourceResponse, status_code=status.HTTP_201_CREATED)
 async def ingest_youtube(
+    background_tasks: BackgroundTasks,
     payload: YoutubeIngestRequest,
     current_user: dict = Depends(get_current_user)
 ):
@@ -150,10 +251,21 @@ async def ingest_youtube(
 
     db = get_database()
     await db.sources.insert_one(source_doc)
+
+    # Trigger background ingestion pipeline
+    background_tasks.add_task(
+        run_ingestion_pipeline,
+        source_id=source_id,
+        user_id=user_id,
+        file_bytes=None,
+        file_type="youtube",
+        url=url
+    )
+
     return _serialize_mongo_doc(source_doc)
 
 
-@router.get("", response_model=List[SourceResponse])
+@router.get("/sources", response_model=List[SourceResponse])
 async def list_sources(
     current_user: dict = Depends(get_current_user)
 ):
@@ -166,7 +278,7 @@ async def list_sources(
     return [_serialize_mongo_doc(src) for src in sources]
 
 
-@router.get("/{source_id}/status", response_model=SourceResponse)
+@router.get("/sources/{source_id}/status", response_model=SourceResponse)
 async def get_source_status(
     source_id: str,
     current_user: dict = Depends(get_current_user)
@@ -194,7 +306,7 @@ async def get_source_status(
     return _serialize_mongo_doc(source)
 
 
-@router.delete("/{source_id}", status_code=status.HTTP_200_OK)
+@router.delete("/sources/{source_id}", status_code=status.HTTP_200_OK)
 async def delete_source(
     source_id: str,
     current_user: dict = Depends(get_current_user)
@@ -223,6 +335,9 @@ async def delete_source(
     if source["file_type"] in {"pdf", "docx", "xlsx", "txt"} and source.get("s3_url"):
         s3_key = f"{source['user_id']}/{source['_id']}.{source['file_type']}"
         await s3_service.delete_file(s3_key)
+
+    # Delete all semantic chunks and vector embeddings associated with this source
+    await vector_service.delete_source_chunks(ObjectId(source_id))
 
     await db.sources.delete_one({"_id": ObjectId(source_id)})
     return {"message": "Source deleted successfully."}
