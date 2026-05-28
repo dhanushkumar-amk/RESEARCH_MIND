@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/constants';
+import useAuth from '@/hooks/useAuth';
 import * as Lucide from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -163,6 +164,7 @@ const FEATURE_TABS = [
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState<'radar' | 'throughput'>('radar');
   const [selectedDemo, setSelectedDemo] = useState(DEMO_QUERIES[0]);
   const [, setDemoStepIndex] = useState(0);
@@ -247,18 +249,30 @@ const LandingPage = () => {
           </nav>
 
           <div className="flex items-center gap-2.5">
-            <button
-              onClick={() => navigate(ROUTES.LOGIN)}
-              className="bg-transparent border border-neutral-200 hover:border-neutral-300 text-neutral-600 hover:text-neutral-900 px-4 py-1.5 rounded-[6px] font-medium transition-all text-[13px]"
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => navigate(ROUTES.REGISTER)}
-              className="bg-[#0a0a0a] hover:bg-[#262626] text-white px-4 py-1.5 rounded-[6px] font-semibold transition-all text-[13px] hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)]"
-            >
-              Get Started
-            </button>
+            {isAuthenticated ? (
+              <button
+                onClick={() => navigate(ROUTES.DASHBOARD)}
+                className="bg-[#0a0a0a] hover:bg-[#262626] text-white px-4 py-1.5 rounded-[6px] font-semibold transition-all text-[13px] hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] flex items-center gap-2"
+              >
+                Go to Dashboard
+                <Lucide.ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => navigate(ROUTES.LOGIN)}
+                  className="bg-transparent border border-neutral-200 hover:border-neutral-300 text-neutral-600 hover:text-neutral-900 px-4 py-1.5 rounded-[6px] font-medium transition-all text-[13px]"
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => navigate(ROUTES.REGISTER)}
+                  className="bg-[#0a0a0a] hover:bg-[#262626] text-white px-4 py-1.5 rounded-[6px] font-semibold transition-all text-[13px] hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)]"
+                >
+                  Get Started
+                </button>
+              </>
+            )}
           </div>
         </div>
       </header>

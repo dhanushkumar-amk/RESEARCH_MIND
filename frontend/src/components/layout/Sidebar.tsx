@@ -1,6 +1,7 @@
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import * as Lucide from 'lucide-react';
 import { NAV_ITEMS, ROUTES } from '@/constants';
+import useAuth from '@/hooks/useAuth';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -12,9 +13,20 @@ interface SidebarProps {
 const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
-  const handleLogout = () => {
-    // Navigate to login
+  const userName = user?.name ?? 'ResearchMind User';
+  const userEmail = user?.email ?? 'No email available';
+  const userInitials = userName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('') || 'RM';
+
+  const handleLogout = async () => {
+    await logout();
+    setIsMobileOpen(false);
     navigate(ROUTES.LOGIN);
   };
 
@@ -94,15 +106,13 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }:
         <div className="p-4 border-t border-gray-200 bg-gray-50/50">
           <div className="flex items-center justify-between gap-3 overflow-hidden">
             <div className="flex items-center gap-3 overflow-hidden">
-              <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces"
-                alt="User Avatar"
-                className="h-8 w-8 rounded-full border border-gray-200 object-cover flex-shrink-0"
-              />
+              <div className="h-8 w-8 rounded-full border border-gray-200 bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                {userInitials}
+              </div>
               {!isCollapsed && (
                 <div className="overflow-hidden">
-                  <p className="text-sm font-medium text-gray-900 truncate">John Doe</p>
-                  <p className="text-xs text-gray-500 truncate">john@researchmind.ai</p>
+                  <p className="text-sm font-medium text-gray-900 truncate">{userName}</p>
+                  <p className="text-xs text-gray-500 truncate">{userEmail}</p>
                 </div>
               )}
             </div>

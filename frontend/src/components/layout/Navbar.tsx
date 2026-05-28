@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import * as Lucide from 'lucide-react';
 import { NAV_ITEMS, ROUTES } from '@/constants';
+import useAuth from '@/hooks/useAuth';
 
 interface NavbarProps {
   onMenuClick: () => void;
@@ -10,7 +11,17 @@ interface NavbarProps {
 const Navbar = ({ onMenuClick }: NavbarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const userName = user?.name ?? 'ResearchMind User';
+  const userEmail = user?.email ?? 'No email available';
+  const userInitials = userName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('') || 'RM';
 
   const getPageTitle = () => {
     const path = location.pathname;
@@ -30,8 +41,9 @@ const Navbar = ({ onMenuClick }: NavbarProps) => {
     return 'ResearchMind';
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setIsDropdownOpen(false);
+    await logout();
     navigate(ROUTES.LOGIN);
   };
 
@@ -77,11 +89,9 @@ const Navbar = ({ onMenuClick }: NavbarProps) => {
             className="flex items-center focus:outline-none"
             aria-label="User menu"
           >
-            <img
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces"
-              alt="User Avatar"
-              className="h-8 w-8 rounded-full border border-gray-200 object-cover hover:ring-2 hover:ring-blue-100 transition-all"
-            />
+            <div className="h-8 w-8 rounded-full border border-gray-200 bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold hover:ring-2 hover:ring-blue-100 transition-all">
+              {userInitials}
+            </div>
           </button>
 
           {isDropdownOpen && (
@@ -95,8 +105,8 @@ const Navbar = ({ onMenuClick }: NavbarProps) => {
               {/* Dropdown Menu */}
               <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                 <div className="px-4 py-2 border-b border-gray-100">
-                  <p className="text-sm font-medium text-gray-900">John Doe</p>
-                  <p className="text-xs text-gray-500 truncate">john@researchmind.ai</p>
+                  <p className="text-sm font-medium text-gray-900">{userName}</p>
+                  <p className="text-xs text-gray-500 truncate">{userEmail}</p>
                 </div>
                 
                 <button
