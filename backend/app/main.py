@@ -9,6 +9,7 @@ import asyncio
 import time
 
 from app.api.routes.auth import router as auth_router
+from app.api.routes.sources import router as sources_router
 from app.core.config import settings
 from app.core.database import close_mongo_connection, connect_to_mongo
 
@@ -36,17 +37,12 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(sources_router)
 
 # Simple schemas for inputs
 class ChatRequest(BaseModel):
     query: str
     session_id: Optional[str] = "default"
-
-class UrlIngestRequest(BaseModel):
-    url: str
-
-class YoutubeIngestRequest(BaseModel):
-    url: str
 
 @app.get("/")
 async def root():
@@ -55,31 +51,6 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "service": "ResearchMind Backend"}
-
-@app.post("/upload")
-async def upload_document(file: UploadFile = File(...)):
-    return {
-        "filename": file.filename,
-        "content_type": file.content_type,
-        "status": "uploaded",
-        "size_bytes": file.size
-    }
-
-@app.post("/ingest/url")
-async def ingest_url(request: UrlIngestRequest):
-    return {
-        "url": request.url,
-        "status": "ingested",
-        "timestamp": time.time()
-    }
-
-@app.post("/ingest/youtube")
-async def ingest_youtube(request: YoutubeIngestRequest):
-    return {
-        "url": request.url,
-        "status": "transcript_extracted",
-        "timestamp": time.time()
-    }
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
@@ -111,21 +82,7 @@ async def get_report(report_id: str):
         "grounding_rating": 98
     }
 
-@app.get("/sources")
-async def list_sources():
-    return {
-        "sources": [
-            {"id": "src_1", "name": "Toyota Battery Corp Annual Report (Q2 2026)", "type": "Company Filing"},
-            {"id": "src_2", "name": "Sulfide-based electrolyte interfaces - ArXiv", "type": "Academic"}
-        ]
-    }
 
-@app.delete("/sources/{source_id}")
-async def remove_source(source_id: str):
-    return {
-        "source_id": source_id,
-        "status": "deleted"
-    }
 
 @app.get("/metrics")
 async def get_metrics():

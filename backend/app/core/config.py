@@ -83,6 +83,13 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("FRONTEND_URL"),
     )
 
+    aws_access_key_id: str | None = Field(default=None, validation_alias=AliasChoices("AWS_ACCESS_KEY_ID"))
+    aws_secret_access_key: str | None = Field(default=None, validation_alias=AliasChoices("AWS_SECRET_ACCESS_KEY"))
+    aws_s3_bucket: str | None = Field(default=None, validation_alias=AliasChoices("AWS_S3_BUCKET"))
+    aws_region: str = Field(default="us-east-1", validation_alias=AliasChoices("AWS_REGION"))
+
+
+
     @field_validator("allowed_origins", mode="before")
     @classmethod
     def parse_allowed_origins(cls, value: Any) -> list[str]:
