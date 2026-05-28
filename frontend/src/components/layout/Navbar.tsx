@@ -79,7 +79,7 @@ const Navbar = ({ onMenuClick }: NavbarProps) => {
           aria-label="Notifications"
         >
           <Lucide.Bell className="h-5 w-5" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-600 rounded-full" />
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full" />
         </button>
 
         {/* User avatar and dropdown */}
@@ -89,7 +89,7 @@ const Navbar = ({ onMenuClick }: NavbarProps) => {
             className="flex items-center focus:outline-none"
             aria-label="User menu"
           >
-            <div className="h-8 w-8 rounded-full border border-gray-200 bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold hover:ring-2 hover:ring-blue-100 transition-all">
+            <div className="h-8 w-8 rounded-full border border-gray-200 bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold hover:ring-2 hover:ring-emerald-150 transition-all">
               {userInitials}
             </div>
           </button>

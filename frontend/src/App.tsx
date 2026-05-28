@@ -15,6 +15,7 @@ import LibraryPage from '@/pages/LibraryPage';
 import ReportPage from '@/pages/ReportPage';
 import AnalyticsPage from '@/pages/AnalyticsPage';
 import SettingsPage from '@/pages/SettingsPage';
+import SourceDetailPage from '@/pages/SourceDetailPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 
 function App() {
@@ -38,6 +39,7 @@ function App() {
           <Route path={ROUTES.REPORT} element={<ReportPage />} />
           <Route path={ROUTES.ANALYTICS} element={<AnalyticsPage />} />
           <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
+          <Route path={ROUTES.SOURCE_DETAIL} element={<SourceDetailPage />} />
           <Route path={ROUTES.NOT_FOUND} element={<NotFoundPage />} />
         </Route>
       </Routes>

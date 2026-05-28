@@ -12,6 +12,7 @@ export const ROUTES = {
   REPORT: '/report/:id',
   ANALYTICS: '/analytics',
   SETTINGS: '/settings',
+  SOURCE_DETAIL: '/source/:id',
   NOT_FOUND: '*',
 } as const
 

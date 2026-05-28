@@ -50,11 +50,11 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }:
         {/* Top: Logo + Name */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="flex-shrink-0 bg-blue-600 text-white p-2 rounded-lg">
+            <div className="flex-shrink-0 bg-emerald-500 text-white p-2 rounded-lg">
               <Lucide.Brain className="h-5 w-5" />
             </div>
             {!isCollapsed && (
-              <span className="font-semibold text-gray-900 truncate">ResearchMind</span>
+              <span className="font-semibold text-gray-900 truncate font-sans">ResearchMind</span>
             )}
           </div>
           
@@ -84,11 +84,11 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }:
                 onClick={() => setIsMobileOpen(false)}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group relative ${
                   isActive
-                    ? 'bg-blue-50 text-blue-600 font-medium'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-950'
+                    ? 'bg-emerald-50 text-emerald-600 font-semibold'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-950 font-medium'
                 }`}
               >
-                <Icon className={`h-5 w-5 flex-shrink-0 ${isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}`} />
+                <Icon className={`h-5 w-5 flex-shrink-0 ${isActive ? 'text-emerald-600' : 'text-gray-400 group-hover:text-gray-600'}`} />
                 {!isCollapsed && <span className="text-sm truncate">{item.label}</span>}
                 
                 {/* Tooltip for collapsed sidebar */}
