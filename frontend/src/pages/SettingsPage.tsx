@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { 
-  Settings, User, Cpu, Database, ShieldAlert, 
+import {
+  Settings, User, Cpu, Database, ShieldAlert,
   RefreshCw, Bell, Key, Trash2, Shield, Info,
   CheckCircle
 } from 'lucide-react';
@@ -9,7 +9,7 @@ import useAuth from '@/hooks/useAuth';
 
 const SettingsPage = () => {
   const { user } = useAuth();
-  
+
   // Profile state
   const [profileName, setProfileName] = useState(user?.name ?? 'Dhanush');
   const [profileEmail, setProfileEmail] = useState(user?.email ?? 'dhanush@researchmind.ai');
@@ -17,7 +17,7 @@ const SettingsPage = () => {
   // LLM Gateway settings
   const [primaryModel, setPrimaryModel] = useState('groq-llama-3.3-70b-versatile');
   const [maxTokens, setMaxTokens] = useState(4096);
-  
+
   // RAG settings
   const [chunkSize, setChunkSize] = useState(512);
   const [chunkOverlap, setChunkOverlap] = useState(50);
@@ -49,7 +49,7 @@ const SettingsPage = () => {
   return (
     <AppShell>
       <div className="max-w-[1000px] mx-auto space-y-6 lg:space-y-8 font-sans antialiased">
-        
+
         {/* Top Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -60,7 +60,7 @@ const SettingsPage = () => {
               Configure ResearchMind models routing, retrieval indices parameters, and security policies.
             </p>
           </div>
-          
+
           {isSaved && (
             <div className="flex items-center gap-1.5 bg-green-50 border border-green-100 text-[#16a34a] px-3 py-1.5 rounded-lg text-xs font-bold animate-fade-in">
               <CheckCircle className="h-4 w-4 text-[#16a34a]" />
@@ -70,14 +70,14 @@ const SettingsPage = () => {
         </div>
 
         <form onSubmit={handleSave} className="space-y-6">
-          
+
           {/* 1. Profile Settings */}
           <div className="bg-white border border-neutral-200 rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] space-y-4">
             <div className="flex items-center gap-2 border-b border-neutral-100 pb-3">
               <User className="h-4.5 w-4.5 text-[#16a34a]" />
               <h2 className="font-bold text-sm text-neutral-900">Profile Configurations</h2>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-neutral-600">Full Name</label>
@@ -121,7 +121,7 @@ const SettingsPage = () => {
                   <option value="deepseek-chat">DeepSeek Chat V3</option>
                 </select>
               </div>
-              
+
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-neutral-600">Max Tokens Limit per request</label>
                 <input
@@ -268,14 +268,14 @@ const SettingsPage = () => {
 
           {/* 5. ETL settings & Notification settings */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
+
             {/* ETL Sync configurations */}
             <div className="bg-white border border-neutral-200 rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] space-y-4">
               <div className="flex items-center gap-2 border-b border-neutral-100 pb-3">
                 <RefreshCw className="h-4.5 w-4.5 text-[#16a34a]" />
                 <h2 className="font-bold text-sm text-neutral-900">ETL Refresh Configurations</h2>
               </div>
-              
+
               <div className="flex items-center justify-between py-1">
                 <div className="space-y-0.5">
                   <p className="text-xs font-bold text-neutral-750">Nightly Data Refresh</p>
@@ -331,7 +331,7 @@ const SettingsPage = () => {
               <Key className="h-4.5 w-4.5 text-[#16a34a]" />
               <h2 className="font-bold text-sm text-neutral-900">Developer Integrations</h2>
             </div>
-            
+
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-neutral-600">LLMGate Router Key</label>
               <div className="flex gap-2">
@@ -341,7 +341,7 @@ const SettingsPage = () => {
                   readOnly
                   className="flex-1 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs text-neutral-500 font-mono"
                 />
-                <button 
+                <button
                   type="button"
                   onClick={() => navigator.clipboard.writeText('sk-llmgate-f823a9d72b2203e0c0')}
                   className="bg-white border border-neutral-200 hover:border-neutral-350 text-neutral-705 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"
@@ -365,13 +365,13 @@ const SettingsPage = () => {
             </p>
 
             <div className="flex flex-wrap gap-2.5">
-              <button 
+              <button
                 type="button"
                 className="bg-white border border-red-200 hover:bg-red-50 text-red-700 font-bold px-4 py-2 rounded-lg text-xs cursor-pointer transition-colors"
               >
                 Clear Database Cache
               </button>
-              <button 
+              <button
                 type="button"
                 className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-lg text-xs cursor-pointer transition-colors shadow-sm"
               >

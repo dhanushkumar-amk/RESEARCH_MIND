@@ -1,9 +1,9 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Upload, Globe, Search, BookOpen, 
-  Trash2, RefreshCw, FileText, CheckCircle2, 
+import {
+  Upload, Globe, Search, BookOpen,
+  Trash2, RefreshCw, FileText, CheckCircle2,
   Clock, AlertTriangle, Database, Info, Filter,
   Layers, HardDrive, Plus, X
 } from 'lucide-react';
@@ -11,9 +11,9 @@ import AppShell from '@/components/layout/AppShell';
 
 // Custom SVG Youtube icon to bypass lucide-react export discrepancy
 const YoutubeIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement> & { className?: string }) => (
-  <svg 
-    viewBox="0 0 24 24" 
-    fill="currentColor" 
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
     className={className}
     {...props}
   >
@@ -38,7 +38,7 @@ const LibraryPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'PDF' | 'URL' | 'YouTube' | 'Word'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'indexed' | 'processing' | 'failed'>('all');
-  
+
   // URL & YouTube Input values
   const [urlInput, setUrlInput] = useState('');
   const [youtubeInput, setYoutubeInput] = useState('');
@@ -66,7 +66,7 @@ const LibraryPage = () => {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const file = e.dataTransfer.files[0];
       addNewMockDoc(file.name, file.size);
@@ -137,14 +137,14 @@ const LibraryPage = () => {
     let progress = 10;
     const interval = setInterval(() => {
       progress += 15;
-      setDocuments(prev => 
+      setDocuments(prev =>
         prev.map(d => d.id === newId ? { ...d, progress: Math.min(progress, 100) } : d)
       );
 
       if (progress >= 100) {
         clearInterval(interval);
         setTimeout(() => {
-          setDocuments(prev => 
+          setDocuments(prev =>
             prev.map(d => d.id === newId ? { ...d, status: 'indexed', chunks: Math.floor(Math.random() * 80) + 10 } : d)
           );
         }, 500);
@@ -157,21 +157,21 @@ const LibraryPage = () => {
   };
 
   const reIngestDoc = (id: string) => {
-    setDocuments(prev => 
+    setDocuments(prev =>
       prev.map(d => d.id === id ? { ...d, status: 'processing', progress: 0 } : d)
     );
 
     let progress = 0;
     const interval = setInterval(() => {
       progress += 20;
-      setDocuments(prev => 
+      setDocuments(prev =>
         prev.map(d => d.id === id ? { ...d, progress: Math.min(progress, 100) } : d)
       );
 
       if (progress >= 100) {
         clearInterval(interval);
         setTimeout(() => {
-          setDocuments(prev => 
+          setDocuments(prev =>
             prev.map(d => d.id === id ? { ...d, status: 'indexed', chunks: Math.floor(Math.random() * 80) + 15 } : d)
           );
         }, 500);
@@ -194,7 +194,7 @@ const LibraryPage = () => {
   return (
     <AppShell>
       <div className="max-w-[1400px] mx-auto space-y-6 lg:space-y-8 font-sans antialiased">
-        
+
         {/* Top Header */}
         <div>
           <h1 className="text-2xl lg:text-3xl font-extrabold text-neutral-900 tracking-tight">
@@ -207,24 +207,23 @@ const LibraryPage = () => {
 
         {/* Input grids: Upload Drag-Drop, URL, YouTube & S3 Usage */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
+
           {/* Column 1: File Upload Area */}
-          <div 
+          <div
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={triggerFileInput}
-            className={`border-2 border-dashed rounded-2xl p-6 text-center flex flex-col items-center justify-center cursor-pointer transition-all h-[200px] ${
-              isDragging 
-                ? 'border-[#16a34a] bg-green-50/[0.15]' 
+            className={`border-2 border-dashed rounded-2xl p-6 text-center flex flex-col items-center justify-center cursor-pointer transition-all h-[200px] ${isDragging
+                ? 'border-[#16a34a] bg-green-50/[0.15]'
                 : 'border-neutral-200 bg-white hover:border-neutral-350 hover:bg-neutral-50/30'
-            }`}
+              }`}
           >
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileChange} 
-              className="hidden" 
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
               accept=".pdf,.docx,.doc,.txt"
             />
             <div className="p-3 bg-neutral-50 border border-neutral-100 rounded-xl mb-3 text-neutral-600">
@@ -356,7 +355,7 @@ const LibraryPage = () => {
         {/* Live Ingestion Progress Bars for currently processing documents */}
         <AnimatePresence>
           {documents.some(d => d.status === 'processing') && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -370,9 +369,9 @@ const LibraryPage = () => {
                     <span className="text-[10px] text-neutral-405 font-bold">{doc.progress}%</span>
                   </div>
                   <div className="w-full h-1.5 bg-neutral-100 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-[#16a34a] transition-all duration-300" 
-                      style={{ width: `${doc.progress}%` }} 
+                    <div
+                      className="h-full bg-[#16a34a] transition-all duration-300"
+                      style={{ width: `${doc.progress}%` }}
                     />
                   </div>
                 </div>
@@ -399,15 +398,15 @@ const LibraryPage = () => {
               <tbody className="divide-y divide-neutral-100">
                 {filteredDocs.map((doc) => (
                   <tr key={doc.id} className="hover:bg-neutral-50/55 transition-colors">
-                    
+
                     {/* Name */}
-                    <td 
+                    <td
                       onClick={() => navigate(`/source/${doc.id}`)}
                       className="p-4 font-bold text-neutral-855 max-w-[280px] truncate hover:text-[#16a34a] transition-colors cursor-pointer"
                     >
                       {doc.name}
                     </td>
-                    
+
                     {/* Type icon/badge */}
                     <td className="p-4 text-neutral-600">
                       <span className="inline-flex items-center gap-1.5 font-bold text-[10px]">
@@ -456,9 +455,9 @@ const LibraryPage = () => {
                     {/* Action buttons */}
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-1.5">
-                        
+
                         {/* Re-ingest */}
-                        <button 
+                        <button
                           onClick={() => reIngestDoc(doc.id)}
                           disabled={doc.status === 'processing'}
                           className="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded transition-colors disabled:opacity-50"
@@ -466,9 +465,9 @@ const LibraryPage = () => {
                         >
                           <RefreshCw className="h-4 w-4" />
                         </button>
-                        
+
                         {/* Delete */}
-                        <button 
+                        <button
                           onClick={() => deleteDoc(doc.id)}
                           className="p-1.5 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
                           title="Delete Document"

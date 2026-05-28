@@ -1,5 +1,4 @@
-import { useState, ReactNode } from 'react';
-import Sidebar from './Sidebar';
+import { ReactNode } from 'react';
 import Navbar from './Navbar';
 
 interface AppShellProps {
@@ -7,33 +6,15 @@ interface AppShellProps {
 }
 
 const AppShell = ({ children }: AppShellProps) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-
   return (
-    <div className="flex min-h-screen bg-[#F9FAFB]">
-      {/* Sidebar Navigation */}
-      <Sidebar
-        isCollapsed={isCollapsed}
-        setIsCollapsed={setIsCollapsed}
-        isMobileOpen={isMobileOpen}
-        setIsMobileOpen={setIsMobileOpen}
-      />
+    <div className="min-h-screen bg-white flex flex-col font-sans antialiased text-neutral-900 selection:bg-green-100 selection:text-[#16a34a]">
+      {/* Top Navigation Bar */}
+      <Navbar />
 
-      {/* Main Content Wrapper */}
-      <div
-        className={`flex flex-col flex-1 min-h-screen transition-all duration-300 ease-in-out ${
-          isCollapsed ? 'lg:pl-16' : 'lg:pl-60'
-        }`}
-      >
-        {/* Top Navbar */}
-        <Navbar onMenuClick={() => setIsMobileOpen(true)} />
-
-        {/* Main Body */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-8">
-          {children}
-        </main>
-      </div>
+      {/* Main Content Area */}
+      <main className="flex-1 w-full max-w-[1400px] mx-auto px-4 py-6 lg:px-8 lg:py-10">
+        {children}
+      </main>
     </div>
   );
 };

@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  Search, BookOpen, Brain, ArrowRight, FileText, 
-  Globe, ShieldCheck, Clock, Plus, Database, 
-  Sparkles, Cpu, Server, CheckCircle, Upload, 
+import {
+  Search, BookOpen, Brain, ArrowRight, FileText,
+  Globe, ShieldCheck, Clock, Plus, Database,
+  Sparkles, Cpu, Server, CheckCircle, Upload,
   TrendingUp, Activity, AlertCircle, RefreshCw
 } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
@@ -90,7 +90,7 @@ const DashboardPage = () => {
   return (
     <AppShell>
       <div className="max-w-[1400px] mx-auto space-y-6 lg:space-y-8 font-sans antialiased">
-        
+
         {/* Welcome Header & Quick Action Buttons */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -101,24 +101,24 @@ const DashboardPage = () => {
               Here is what's happening with ResearchMind today.
             </p>
           </div>
-          
+
           {/* Quick actions row */}
           <div className="flex items-center gap-2.5">
-            <button 
+            <button
               onClick={() => navigate(ROUTES.LIBRARY, { state: { openUpload: true } })}
               className="bg-white border border-neutral-200 hover:border-neutral-350 text-neutral-700 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all shadow-sm cursor-pointer"
             >
               <Upload className="h-4 w-4 text-neutral-500" />
               <span>Upload Document</span>
             </button>
-            <button 
+            <button
               onClick={() => navigate(ROUTES.RESEARCH)}
               className="bg-green-50 text-[#16a34a] hover:bg-green-100 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all border border-green-100 cursor-pointer"
             >
               <Plus className="h-4 w-4" />
               <span>Start Research</span>
             </button>
-            <button 
+            <button
               onClick={() => navigate('/reports')}
               className="bg-neutral-950 text-white hover:bg-neutral-850 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all shadow-sm cursor-pointer"
             >
@@ -157,7 +157,7 @@ const DashboardPage = () => {
 
         {/* Main Content Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
+
           {/* Left Columns (Span 2): Recent Research Queries */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center justify-between">
@@ -171,7 +171,7 @@ const DashboardPage = () => {
             <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
               <div className="divide-y divide-neutral-100">
                 {recentQueries.map((item, idx) => (
-                  <div 
+                  <div
                     key={item.id}
                     onClick={() => navigate(ROUTES.RESEARCH, { state: { initialQuery: item.question } })}
                     className="p-4 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-4 cursor-pointer group"
@@ -186,7 +186,7 @@ const DashboardPage = () => {
                         <span>{item.timestamp}</span>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-3">
                       <div className="text-right">
                         <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Grounding</p>
@@ -202,7 +202,7 @@ const DashboardPage = () => {
 
           {/* Right Column: Recent Documents & System Health */}
           <div className="space-y-6">
-            
+
             {/* Recent Documents */}
             <div className="space-y-3.5">
               <div className="flex items-center justify-between">
@@ -210,7 +210,7 @@ const DashboardPage = () => {
                   <BookOpen className="h-5 w-5 text-[#16a34a]" />
                   <h2 className="font-bold text-lg text-neutral-900">Recent Documents</h2>
                 </div>
-                <button 
+                <button
                   onClick={() => navigate(ROUTES.LIBRARY)}
                   className="text-xs font-bold text-[#16a34a] hover:text-green-700 transition-colors"
                 >
@@ -221,7 +221,7 @@ const DashboardPage = () => {
               <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
                 <div className="divide-y divide-neutral-100">
                   {recentDocuments.map((doc, idx) => (
-                    <div 
+                    <div
                       key={idx}
                       className="p-3 hover:bg-neutral-50 transition-colors flex items-center justify-between gap-3 cursor-pointer"
                       onClick={() => navigate(ROUTES.LIBRARY)}

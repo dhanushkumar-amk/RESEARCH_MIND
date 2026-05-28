@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Search, Brain, Send, FileText, CheckCircle2, 
-  ThumbsUp, ThumbsDown, RotateCcw, ChevronRight, 
+import {
+  Search, Brain, Send, FileText, CheckCircle2,
+  ThumbsUp, ThumbsDown, RotateCcw, ChevronRight,
   Database, Globe, ShieldCheck, Sparkles, Filter,
   BookOpen, HelpCircle, Loader2, Play
 } from 'lucide-react';
@@ -38,7 +38,7 @@ const ResearchPage = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedSourceFilter, setSelectedSourceFilter] = useState<'all' | 'specific'>('all');
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
-  
+
   // Multi-agent lifecycle status
   const [activeAgent, setActiveAgent] = useState<'idle' | 'retrieval' | 'research' | 'critic' | 'summary'>('idle');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -89,7 +89,7 @@ const ResearchPage = () => {
     await new Promise(resolve => setTimeout(resolve, 800));
 
     // 3. Setup Streaming Response
-    const responseTemplate = 
+    const responseTemplate =
       `Based on the solid electrolyte battery standards (Q1 2026) and latest reports, sulfide-based solid electrolytes have reached an energy density of 510 Wh/kg in pilot production lines. The main challenges relate to:
 1. **Dendrite Formation:** Lithium metal interfaces still witness localized short-circuiting during rapid-charge phases (>3C rate).
 2. **Moisture Sensitivity:** Contact with ambient air creates toxic hydrogen sulfide (H₂S) gas, requiring specialized argon glovebox tooling for assembly.
@@ -98,13 +98,13 @@ Current NIST and ISO safety standards outline class-4 hazardous protocols for ha
 
     const words = responseTemplate.split(' ');
     let currentText = '';
-    
+
     // Add initial placeholder message for assistant
     setMessages((prev) => [
       ...prev,
-      { 
-        role: 'assistant', 
-        content: '', 
+      {
+        role: 'assistant',
+        content: '',
         isStreaming: true,
         agents: ['Retrieval Agent', 'Research Agent (Tavily)', 'Critic Agent', 'Summary Agent'],
         sources: [
@@ -148,7 +148,7 @@ Current NIST and ISO safety standards outline class-4 hazardous protocols for ha
   };
 
   const handleDocToggle = (docId: string) => {
-    setSelectedDocs(prev => 
+    setSelectedDocs(prev =>
       prev.includes(docId) ? prev.filter(id => id !== docId) : [...prev, docId]
     );
   };
@@ -156,10 +156,10 @@ Current NIST and ISO safety standards outline class-4 hazardous protocols for ha
   return (
     <AppShell>
       <div className="max-w-[1200px] mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6 font-sans antialiased h-[calc(100vh-7rem)]">
-        
+
         {/* Left Side: Controls, Document Filters & History (1 Col) */}
         <div className="lg:col-span-1 flex flex-col gap-5 h-full overflow-y-auto pr-1">
-          
+
           {/* Source Selector Panel */}
           <div className="bg-white border border-neutral-200 rounded-xl p-4 space-y-4 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
             <div className="flex items-center gap-2 text-neutral-800">
@@ -170,28 +170,26 @@ Current NIST and ISO safety standards outline class-4 hazardous protocols for ha
             <div className="flex rounded-lg bg-neutral-50 p-1 text-xs">
               <button
                 onClick={() => setSelectedSourceFilter('all')}
-                className={`flex-1 py-1.5 rounded-md font-bold text-center transition-all cursor-pointer ${
-                  selectedSourceFilter === 'all' 
-                    ? 'bg-white text-neutral-900 shadow-sm border border-neutral-200/50' 
+                className={`flex-1 py-1.5 rounded-md font-bold text-center transition-all cursor-pointer ${selectedSourceFilter === 'all'
+                    ? 'bg-white text-neutral-900 shadow-sm border border-neutral-200/50'
                     : 'text-neutral-500 hover:text-neutral-800'
-                }`}
+                  }`}
               >
                 All Documents
               </button>
               <button
                 onClick={() => setSelectedSourceFilter('specific')}
-                className={`flex-1 py-1.5 rounded-md font-bold text-center transition-all cursor-pointer ${
-                  selectedSourceFilter === 'specific' 
-                    ? 'bg-white text-neutral-900 shadow-sm border border-neutral-200/50' 
+                className={`flex-1 py-1.5 rounded-md font-bold text-center transition-all cursor-pointer ${selectedSourceFilter === 'specific'
+                    ? 'bg-white text-neutral-900 shadow-sm border border-neutral-200/50'
                     : 'text-neutral-500 hover:text-neutral-800'
-                }`}
+                  }`}
               >
                 Specific (Select)
               </button>
             </div>
 
             {selectedSourceFilter === 'specific' && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 className="space-y-2 pt-1.5"
@@ -199,7 +197,7 @@ Current NIST and ISO safety standards outline class-4 hazardous protocols for ha
                 <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Select libraries to search</p>
                 <div className="space-y-1.5 max-h-36 overflow-y-auto">
                   {availableDocs.map(doc => (
-                    <label 
+                    <label
                       key={doc.id}
                       className="flex items-center gap-2 text-xs text-neutral-700 hover:text-neutral-900 cursor-pointer p-1 rounded hover:bg-neutral-50"
                     >
@@ -220,7 +218,7 @@ Current NIST and ISO safety standards outline class-4 hazardous protocols for ha
           {/* Conversation history lists */}
           <div className="bg-white border border-neutral-200 rounded-xl p-4 flex-1 flex flex-col min-h-[220px] shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
             <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">History Sessions</span>
-            
+
             <div className="space-y-1 overflow-y-auto flex-1">
               {messages.filter(m => m.role === 'user').map((m, idx) => (
                 <button
@@ -242,34 +240,30 @@ Current NIST and ISO safety standards outline class-4 hazardous protocols for ha
 
         {/* Right Side: Streaming Interface & Main Chat Box (3 Cols) */}
         <div className="lg:col-span-3 flex flex-col bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.02)] h-full">
-          
+
           {/* Top Panel: Agent Network Status Indicator */}
           <div className="bg-neutral-50/50 border-b border-neutral-100 p-3.5 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Brain className="h-4.5 w-4.5 text-[#16a34a]" />
               <span className="text-sm font-bold text-neutral-800">Agent Network Activity</span>
             </div>
-            
+
             {/* Live active states */}
             <div className="flex items-center gap-3">
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all uppercase ${
-                activeAgent === 'retrieval' ? 'bg-amber-100 text-amber-700 animate-pulse' : 'bg-neutral-100 text-neutral-400'
-              }`}>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all uppercase ${activeAgent === 'retrieval' ? 'bg-amber-100 text-amber-700 animate-pulse' : 'bg-neutral-100 text-neutral-400'
+                }`}>
                 Retrieval
               </span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all uppercase ${
-                activeAgent === 'research' ? 'bg-purple-100 text-purple-700 animate-pulse' : 'bg-neutral-100 text-neutral-400'
-              }`}>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all uppercase ${activeAgent === 'research' ? 'bg-purple-100 text-purple-700 animate-pulse' : 'bg-neutral-100 text-neutral-400'
+                }`}>
                 Research
               </span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all uppercase ${
-                activeAgent === 'critic' ? 'bg-rose-100 text-rose-700 animate-pulse' : 'bg-neutral-100 text-neutral-400'
-              }`}>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all uppercase ${activeAgent === 'critic' ? 'bg-rose-100 text-rose-700 animate-pulse' : 'bg-neutral-100 text-neutral-400'
+                }`}>
                 Critic
               </span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all uppercase ${
-                activeAgent === 'summary' ? 'bg-green-100 text-green-700 animate-pulse' : 'bg-neutral-100 text-neutral-400'
-              }`}>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all uppercase ${activeAgent === 'summary' ? 'bg-green-100 text-green-700 animate-pulse' : 'bg-neutral-100 text-neutral-400'
+                }`}>
                 Summary
               </span>
             </div>
@@ -290,7 +284,7 @@ Current NIST and ISO safety standards outline class-4 hazardous protocols for ha
             ) : (
               messages.map((message, index) => (
                 <div key={index} className="space-y-2">
-                  
+
                   {/* User message */}
                   {message.role === 'user' && (
                     <div className="flex justify-end">
@@ -303,7 +297,7 @@ Current NIST and ISO safety standards outline class-4 hazardous protocols for ha
                   {/* Assistant response */}
                   {message.role === 'assistant' && (
                     <div className="space-y-4 max-w-[90%] text-left">
-                      
+
                       {/* Subtitle listing running agents */}
                       {message.agents && (
                         <div className="flex items-center gap-1 text-[10px] text-neutral-400 font-bold uppercase tracking-wider">
@@ -326,7 +320,7 @@ Current NIST and ISO safety standards outline class-4 hazardous protocols for ha
                           <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Sources & Citations</p>
                           <div className="flex flex-wrap gap-2">
                             {message.sources.map(src => (
-                              <a 
+                              <a
                                 key={src.id}
                                 href="#"
                                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-neutral-50 border border-neutral-200 text-neutral-700 hover:border-green-200 hover:text-[#16a34a] transition-colors text-xs font-semibold"
@@ -343,7 +337,7 @@ Current NIST and ISO safety standards outline class-4 hazardous protocols for ha
                       {/* Actions row: report, feedback, regenerate */}
                       {!message.isStreaming && (
                         <div className="flex items-center justify-between border-t border-neutral-100 pt-3">
-                          
+
                           {/* Left: Feedback & regenerate */}
                           <div className="flex items-center gap-2">
                             <button className="p-1.5 text-neutral-400 hover:text-[#16a34a] rounded-md hover:bg-neutral-50 transition-all" title="Thumbs Up">
@@ -352,7 +346,7 @@ Current NIST and ISO safety standards outline class-4 hazardous protocols for ha
                             <button className="p-1.5 text-neutral-400 hover:text-rose-600 rounded-md hover:bg-neutral-50 transition-all" title="Thumbs Down">
                               <ThumbsDown className="h-4 w-4" />
                             </button>
-                            <button 
+                            <button
                               onClick={() => submitQuery(messages[index - 1]?.content ?? '')}
                               className="p-1.5 text-neutral-400 hover:text-neutral-800 rounded-md hover:bg-neutral-50 transition-all flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider"
                               title="Regenerate"
@@ -363,7 +357,7 @@ Current NIST and ISO safety standards outline class-4 hazardous protocols for ha
                           </div>
 
                           {/* Right: Generate Full Report */}
-                          <button 
+                          <button
                             onClick={() => navigate('/report/rep_new')}
                             className="bg-neutral-900 hover:bg-neutral-850 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
                           >
@@ -403,9 +397,9 @@ Current NIST and ISO safety standards outline class-4 hazardous protocols for ha
 
           {/* Search/Chat Input Area */}
           <div className="border-t border-neutral-100 p-4 bg-white space-y-3">
-            
+
             {/* Input Form */}
-            <form 
+            <form
               onSubmit={(e) => {
                 e.preventDefault();
                 submitQuery(query);
@@ -421,7 +415,7 @@ Current NIST and ISO safety standards outline class-4 hazardous protocols for ha
                   onChange={(e) => setQuery(e.target.value)}
                   className="w-full pl-4 pr-12 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white transition-all text-neutral-900 placeholder-neutral-400 shadow-inner disabled:bg-neutral-100"
                 />
-                
+
                 {/* Floating spinner if agents are parsing */}
                 {isProcessing && (
                   <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-neutral-405">
