@@ -13,6 +13,10 @@ export const ROUTES = {
   ANALYTICS: '/analytics',
   SETTINGS: '/settings',
   SOURCE_DETAIL: '/source/:id',
+  HISTORY: '/history',
+  PRICING: '/pricing',
+  HELP: '/help',
+  ERROR: '/error',
   NOT_FOUND: '*',
 } as const
 
@@ -72,6 +76,18 @@ export const NAV_ITEMS = [
     description: 'Manage documents',
   },
   {
+    label: 'Reports',
+    path: '/reports',
+    icon: 'FileText',
+    description: 'Research report viewer',
+  },
+  {
+    label: 'History',
+    path: '/history',
+    icon: 'Clock',
+    description: 'Past sessions log',
+  },
+  {
     label: 'Analytics',
     path: '/analytics',
     icon: 'BarChart2',
@@ -82,6 +98,18 @@ export const NAV_ITEMS = [
     path: '/settings',
     icon: 'Settings',
     description: 'App configuration',
+  },
+  {
+    label: 'Pricing',
+    path: '/pricing',
+    icon: 'CreditCard',
+    description: 'SaaS subscription plans',
+  },
+  {
+    label: 'Help / FAQ',
+    path: '/help',
+    icon: 'HelpCircle',
+    description: 'Support and documentation',
   },
 ] as const
 

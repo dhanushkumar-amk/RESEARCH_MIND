@@ -41,7 +41,7 @@ Sulfide-based solid electrolytes (specifically Li10GeP2S12 and LPS-type glass-ce
 ### 2. Interface Kinetics & Dendrite Growth
 Interfacial resistance between the lithium metal anode and sulfide electrolyte arises due to:
 * **Chemical Reduction:** Sulfides are thermodynamically unstable against metallic lithium, forming resistive decomposition layers ($Li_2S$, $Li_3P$).
-* **Mechanical Inhomogeneities:** Void formation during striping leads to current hot-spots, accelerating dendritic short-circuits during high-rate charging (>3C).
+* **Mechanical Inhomogeneities:** Void formation during striping leads to current hot-spots, accelerating dendritic short-circuits during high-rate charging (>3C rate).
 
 ### 3. Outgassing Mitigation Protocols
 Exposure of sulfide electrolytes to ambient moisture generates toxic Hydrogen Sulfide ($H_2S$) gas. Pilot facilities mitigate this via:
@@ -107,7 +107,7 @@ To ensure confidentiality against "harvest now, decrypt later" attacks, modern e
             <h1 className="text-2xl lg:text-3xl font-extrabold text-neutral-900 tracking-tight">
               Synthesized Research Reports
             </h1>
-            <p className="text-sm text-neutral-500 mt-1">
+            <p className="text-sm text-neutral-500 mt-1 font-medium">
               Access and export past comprehensive research reports synthesized by ResearchMind.
             </p>
           </div>
@@ -125,18 +125,18 @@ To ensure confidentiality against "harvest now, decrypt later" attacks, modern e
                     <span>{rep.readTime}</span>
                   </div>
                   <h3 className="font-extrabold text-base text-neutral-900 line-clamp-1">{rep.title}</h3>
-                  <p className="text-xs text-neutral-500 line-clamp-2 leading-relaxed">{rep.summary}</p>
+                  <p className="text-xs text-neutral-500 line-clamp-2 leading-relaxed font-semibold">{rep.summary}</p>
                 </div>
 
                 <div className="flex items-center justify-between border-t border-neutral-100 pt-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-bold">
+                    <span className="text-[10px] text-green-700 bg-green-50 px-1.5 py-0.5 rounded font-bold">
                       Accuracy: {rep.groundingScore}%
                     </span>
-                    <span className="text-[10px] text-neutral-450">{rep.model}</span>
+                    <span className="text-[10px] text-neutral-450 font-semibold">{rep.model}</span>
                   </div>
                   
-                  <span className="text-xs font-bold text-emerald-600 flex items-center gap-1 group">
+                  <span className="text-xs font-bold text-[#16a34a] flex items-center gap-1 group">
                     View Report
                     <ChevronRight className="h-4.5 w-4.5 group-hover:translate-x-0.5 transition-all" />
                   </span>
@@ -158,7 +158,7 @@ To ensure confidentiality against "harvest now, decrypt later" attacks, modern e
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-100 pb-4">
           <button 
             onClick={() => navigate(-1)}
-            className="flex items-center gap-1.5 text-xs font-bold text-neutral-550 hover:text-emerald-650 transition-colors"
+            className="flex items-center gap-1.5 text-xs font-bold text-neutral-550 hover:text-green-655 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Directory
@@ -167,21 +167,21 @@ To ensure confidentiality against "harvest now, decrypt later" attacks, modern e
           <div className="flex items-center gap-2.5">
             <button 
               onClick={handleExportPDF}
-              className="bg-white border border-neutral-200 hover:border-neutral-300 text-neutral-700 font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all shadow-sm cursor-pointer"
+              className="bg-white border border-neutral-200 hover:border-neutral-350 text-neutral-705 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all shadow-sm cursor-pointer"
             >
               <Download className="h-4 w-4 text-neutral-500" />
               <span>Export PDF</span>
             </button>
             <button 
               onClick={handleShareLink}
-              className="bg-white border border-neutral-200 hover:border-neutral-300 text-neutral-700 font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all shadow-sm cursor-pointer"
+              className="bg-white border border-neutral-200 hover:border-neutral-350 text-neutral-705 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all shadow-sm cursor-pointer"
             >
               <Share2 className="h-4 w-4 text-neutral-500" />
               <span>Share Link</span>
             </button>
             <button 
               onClick={() => handleDelete(report.id)}
-              className="bg-red-50 hover:bg-red-100 text-red-700 font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all border border-red-100 cursor-pointer"
+              className="bg-red-50 hover:bg-red-100 text-red-700 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all border border-red-100 cursor-pointer"
             >
               <Trash2 className="h-4 w-4" />
               <span>Delete</span>
@@ -191,15 +191,15 @@ To ensure confidentiality against "harvest now, decrypt later" attacks, modern e
 
         {/* Report metadata block */}
         <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] space-y-4 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/[0.01] rounded-full blur-[80px] pointer-events-none" />
+          <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/[0.01] rounded-full blur-[80px] pointer-events-none" />
           
           <div className="flex flex-wrap items-center gap-3 text-[10px] text-neutral-450 font-bold uppercase tracking-wider">
             <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {report.date}</span>
             <span>•</span>
             <span>{report.readTime}</span>
             <span>•</span>
-            <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded flex items-center gap-1">
-              <ShieldCheck className="h-3 w-3 text-emerald-500" />
+            <span className="text-green-700 bg-green-50 px-1.5 py-0.5 rounded flex items-center gap-1 font-bold">
+              <ShieldCheck className="h-3 w-3 text-[#16a34a]" />
               {report.groundingScore}% Grounding Accuracy
             </span>
           </div>
@@ -208,7 +208,7 @@ To ensure confidentiality against "harvest now, decrypt later" attacks, modern e
             {report.title}
           </h1>
 
-          <div className="border-t border-neutral-100 pt-4 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+          <div className="border-t border-neutral-100 pt-4 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs font-semibold">
             <p className="text-neutral-500 italic">
               <strong>Query:</strong> "{report.query}"
             </p>
@@ -220,7 +220,7 @@ To ensure confidentiality against "harvest now, decrypt later" attacks, modern e
 
         {/* Report Body Content (Markdown mock) */}
         <div className="bg-white border border-neutral-200 rounded-2xl p-6 lg:p-8 shadow-[0_2px_8px_rgba(0,0,0,0.01)] prose prose-neutral max-w-none">
-          <div className="space-y-6 text-sm text-neutral-800 leading-relaxed whitespace-pre-wrap">
+          <div className="space-y-6 text-sm text-neutral-800 leading-relaxed whitespace-pre-wrap font-medium">
             {report.contentMarkdown}
           </div>
         </div>
@@ -228,7 +228,7 @@ To ensure confidentiality against "harvest now, decrypt later" attacks, modern e
         {/* Citations section */}
         <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.01)] space-y-4">
           <h2 className="font-bold text-sm text-neutral-900 border-b border-neutral-100 pb-3 flex items-center gap-2">
-            <BookOpen className="h-4.5 w-4.5 text-emerald-600" />
+            <BookOpen className="h-4.5 w-4.5 text-[#16a34a]" />
             Citations & Grounded Sources
           </h2>
 
@@ -236,13 +236,13 @@ To ensure confidentiality against "harvest now, decrypt later" attacks, modern e
             {report.citations.map((cite, idx) => (
               <div 
                 key={idx}
-                className="flex items-start gap-2.5 p-3 hover:bg-neutral-50 rounded-xl transition-colors border border-neutral-100 text-xs font-semibold text-neutral-700"
+                className="flex items-start gap-2.5 p-3 hover:bg-neutral-50 rounded-xl transition-colors border border-neutral-100 text-xs font-semibold text-neutral-705"
               >
                 <span className="h-5 w-5 bg-neutral-100 rounded-full flex items-center justify-center font-bold text-[10px] text-neutral-500 flex-shrink-0">
                   {idx + 1}
                 </span>
                 <span className="flex-1">{cite}</span>
-                <ExternalLink className="h-3.5 w-3.5 text-neutral-400 hover:text-neutral-600 transition-colors cursor-pointer" />
+                <ExternalLink className="h-3.5 w-3.5 text-neutral-405 hover:text-neutral-605 transition-colors cursor-pointer" />
               </div>
             ))}
           </div>

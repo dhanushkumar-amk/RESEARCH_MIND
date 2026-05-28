@@ -25,8 +25,8 @@ const AnalyticsPage = () => {
 
   // Model usage breakdown
   const modelUsage = [
-    { name: 'Llama 3.3 70B (Groq)', pct: 55, tokens: '1.2M tokens', color: 'bg-emerald-500' },
-    { name: 'Gemini 1.5 Pro', pct: 30, tokens: '640K tokens', color: 'bg-emerald-400' },
+    { name: 'Llama 3.3 70B (Groq)', pct: 55, tokens: '1.2M tokens', color: 'bg-green-600' },
+    { name: 'Gemini 1.5 Pro', pct: 30, tokens: '640K tokens', color: 'bg-green-400' },
     { name: 'Claude 3.5 Sonnet', pct: 10, tokens: '210K tokens', color: 'bg-neutral-850' },
     { name: 'DeepSeek Chat', pct: 5, pctLabel: '5%', tokens: '105K tokens', color: 'bg-neutral-400' },
   ];
@@ -56,12 +56,12 @@ const AnalyticsPage = () => {
             <h1 className="text-2xl lg:text-3xl font-extrabold text-neutral-900 tracking-tight">
               Analytics & Diagnostics
             </h1>
-            <p className="text-sm text-neutral-500 mt-1">
+            <p className="text-sm text-neutral-500 mt-1 font-medium">
               Real-time monitoring of RAG quality, LiteLLM gateway performance, agent execution success, and costs.
             </p>
           </div>
           
-          <button className="bg-white border border-neutral-200 hover:border-neutral-300 text-neutral-700 font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all shadow-sm cursor-pointer">
+          <button className="bg-white border border-neutral-200 hover:border-neutral-300 text-neutral-700 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all shadow-sm cursor-pointer">
             <RefreshCw className="h-3.5 w-3.5 text-neutral-500" />
             <span>Refresh Diagnostics</span>
           </button>
@@ -70,7 +70,7 @@ const AnalyticsPage = () => {
         {/* Section 1: RAG Quality Metrics */}
         <div className="space-y-3.5">
           <h2 className="font-bold text-base text-neutral-800 uppercase tracking-wider flex items-center gap-2">
-            <ShieldCheck className="h-4.5 w-4.5 text-emerald-600" />
+            <ShieldCheck className="h-4.5 w-4.5 text-[#16a34a]" />
             RAG Evaluation Quality (RAGAS)
           </h2>
           
@@ -78,13 +78,13 @@ const AnalyticsPage = () => {
             {ragMetrics.map((m, idx) => (
               <div key={idx} className="bg-white border border-neutral-200 rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-neutral-500">{m.label}</span>
-                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">{m.threshold}</span>
+                  <span className="text-xs font-semibold text-neutral-505">{m.label}</span>
+                  <span className="text-xs font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded">{m.threshold}</span>
                 </div>
                 <h3 className="text-2xl font-black text-neutral-900 tracking-tight">{m.value}</h3>
                 
                 <div className="w-full h-1.5 bg-neutral-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${m.score}%` }} />
+                  <div className="h-full bg-[#16a34a] rounded-full" style={{ width: `${m.score}%` }} />
                 </div>
               </div>
             ))}
@@ -97,7 +97,7 @@ const AnalyticsPage = () => {
           {/* Gateway column */}
           <div className="lg:col-span-2 space-y-4">
             <h2 className="font-bold text-base text-neutral-800 uppercase tracking-wider flex items-center gap-2">
-              <Cpu className="h-4.5 w-4.5 text-emerald-600" />
+              <Cpu className="h-4.5 w-4.5 text-[#16a34a]" />
               LLM Gateway Performance (LiteLLM Router)
             </h2>
 
@@ -120,7 +120,7 @@ const AnalyticsPage = () => {
 
             {/* Model Usage breakdown list */}
             <div className="bg-white border border-neutral-200 rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] space-y-4">
-              <span className="text-xs font-bold text-neutral-450 uppercase block">Model Share & Tokens Consumed</span>
+              <span className="text-xs font-bold text-neutral-455 uppercase block">Model Share & Tokens Consumed</span>
               <div className="space-y-3.5">
                 {modelUsage.map((m, idx) => (
                   <div key={idx} className="space-y-1.5">
@@ -144,7 +144,7 @@ const AnalyticsPage = () => {
             {/* Agent performance metrics */}
             <div className="space-y-3.5">
               <h2 className="font-bold text-base text-neutral-800 uppercase tracking-wider flex items-center gap-2">
-                <Clock className="h-4.5 w-4.5 text-emerald-600" />
+                <Clock className="h-4.5 w-4.5 text-[#16a34a]" />
                 Agent Network Execution
               </h2>
 
@@ -169,7 +169,7 @@ const AnalyticsPage = () => {
             {/* Top Topics queries */}
             <div className="space-y-3.5">
               <h2 className="font-bold text-base text-neutral-800 uppercase tracking-wider flex items-center gap-2">
-                <BarChart className="h-4.5 w-4.5 text-emerald-600" />
+                <BarChart className="h-4.5 w-4.5 text-[#16a34a]" />
                 Top Research Topics
               </h2>
 
@@ -181,7 +181,7 @@ const AnalyticsPage = () => {
                       <span className="text-[10px] text-neutral-400 font-bold">{topic.count} queries</span>
                     </div>
                     <div className="w-full h-1 bg-neutral-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${topic.pct}%` }} />
+                      <div className="h-full bg-[#16a34a] rounded-full" style={{ width: `${topic.pct}%` }} />
                     </div>
                   </div>
                 ))}
@@ -196,29 +196,29 @@ const AnalyticsPage = () => {
         <div className="bg-white border border-neutral-200 rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] space-y-4">
           <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
             <div className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-emerald-600" />
+              <DollarSign className="h-5 w-5 text-[#16a34a]" />
               <h2 className="font-bold text-base text-neutral-900">Workspace Cost Tracker</h2>
             </div>
-            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">All APIs Billed via LLMGate</span>
+            <span className="text-[10px] font-bold text-green-705 bg-green-50 px-2 py-0.5 rounded">All APIs Billed via LLMGate</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Total Tokens Consumed</span>
               <p className="text-xl font-black text-neutral-900 font-mono">2,154,820</p>
-              <p className="text-[10px] text-neutral-450 mt-1">Across all models & agents</p>
+              <p className="text-[10px] text-neutral-450 mt-1 font-semibold">Across all models & agents</p>
             </div>
             
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Cached Savings Saved</span>
-              <p className="text-xl font-black text-emerald-600 font-mono">+$84.50</p>
-              <p className="text-[10px] text-neutral-450 mt-1">42.8% queries served from database cache</p>
+              <p className="text-xl font-black text-[#16a34a] font-mono">+$84.50</p>
+              <p className="text-[10px] text-neutral-450 mt-1 font-semibold">42.8% queries served from database cache</p>
             </div>
 
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Avg Cost Per Deep Research</span>
               <p className="text-xl font-black text-neutral-900 font-mono">$0.28</p>
-              <p className="text-[10px] text-neutral-450 mt-1">Using optimized hybrid models routing</p>
+              <p className="text-[10px] text-neutral-450 mt-1 font-semibold">Using optimized hybrid models routing</p>
             </div>
           </div>
         </div>

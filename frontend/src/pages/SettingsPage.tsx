@@ -56,14 +56,14 @@ const SettingsPage = () => {
             <h1 className="text-2xl lg:text-3xl font-extrabold text-neutral-900 tracking-tight">
               Settings & Configurations
             </h1>
-            <p className="text-sm text-neutral-500 mt-1">
+            <p className="text-sm text-neutral-500 mt-1 font-medium">
               Configure ResearchMind models routing, retrieval indices parameters, and security policies.
             </p>
           </div>
           
           {isSaved && (
-            <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-bold animate-fade-in">
-              <CheckCircle className="h-4 w-4 text-emerald-500" />
+            <div className="flex items-center gap-1.5 bg-green-50 border border-green-100 text-[#16a34a] px-3 py-1.5 rounded-lg text-xs font-bold animate-fade-in">
+              <CheckCircle className="h-4 w-4 text-[#16a34a]" />
               <span>Configurations Saved!</span>
             </div>
           )}
@@ -74,7 +74,7 @@ const SettingsPage = () => {
           {/* 1. Profile Settings */}
           <div className="bg-white border border-neutral-200 rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] space-y-4">
             <div className="flex items-center gap-2 border-b border-neutral-100 pb-3">
-              <User className="h-4.5 w-4.5 text-emerald-600" />
+              <User className="h-4.5 w-4.5 text-[#16a34a]" />
               <h2 className="font-bold text-sm text-neutral-900">Profile Configurations</h2>
             </div>
             
@@ -85,7 +85,7 @@ const SettingsPage = () => {
                   type="text"
                   value={profileName}
                   onChange={(e) => setProfileName(e.target.value)}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white text-neutral-900"
+                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-900"
                 />
               </div>
               <div className="space-y-1.5">
@@ -94,7 +94,7 @@ const SettingsPage = () => {
                   type="email"
                   value={profileEmail}
                   onChange={(e) => setProfileEmail(e.target.value)}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white text-neutral-900"
+                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-900"
                 />
               </div>
             </div>
@@ -103,7 +103,7 @@ const SettingsPage = () => {
           {/* 2. LLM Gateway settings */}
           <div className="bg-white border border-neutral-200 rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] space-y-4">
             <div className="flex items-center gap-2 border-b border-neutral-100 pb-3">
-              <Cpu className="h-4.5 w-4.5 text-emerald-600" />
+              <Cpu className="h-4.5 w-4.5 text-[#16a34a]" />
               <h2 className="font-bold text-sm text-neutral-900">LLM Gateway Routing (LiteLLM)</h2>
             </div>
 
@@ -113,7 +113,7 @@ const SettingsPage = () => {
                 <select
                   value={primaryModel}
                   onChange={(e) => setPrimaryModel(e.target.value)}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white text-neutral-700 cursor-pointer"
+                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-705 cursor-pointer"
                 >
                   <option value="groq-llama-3.3-70b-versatile">Llama 3.3 70B Versatile (Groq - Default)</option>
                   <option value="gemini-1.5-pro">Gemini 1.5 Pro (Google)</option>
@@ -128,7 +128,7 @@ const SettingsPage = () => {
                   type="number"
                   value={maxTokens}
                   onChange={(e) => setMaxTokens(parseInt(e.target.value) || 2048)}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white text-neutral-900"
+                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-900"
                 />
               </div>
             </div>
@@ -136,10 +136,10 @@ const SettingsPage = () => {
             {/* Fallback chain guide */}
             <div className="bg-neutral-50 border border-neutral-150 rounded-xl p-3 space-y-1.5">
               <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Automatic Fallback Chain Order</span>
-              <p className="text-xs text-neutral-600 font-medium">
+              <p className="text-xs text-neutral-600 font-semibold">
                 Groq (Llama 3.3) → Gemini 1.5 Pro → OpenRouter (Claude 3.5) → DeepSeek V3
               </p>
-              <p className="text-[10px] text-neutral-450 leading-relaxed">
+              <p className="text-[10px] text-neutral-450 leading-relaxed font-semibold">
                 If the primary provider experiences connection timeouts or rate limit failures, the request automatically falls back to secondary sources.
               </p>
             </div>
@@ -148,7 +148,7 @@ const SettingsPage = () => {
           {/* 3. RAG parameters settings */}
           <div className="bg-white border border-neutral-200 rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] space-y-4">
             <div className="flex items-center gap-2 border-b border-neutral-100 pb-3">
-              <Database className="h-4.5 w-4.5 text-emerald-600" />
+              <Database className="h-4.5 w-4.5 text-[#16a34a]" />
               <h2 className="font-bold text-sm text-neutral-900">Retrieval & Indexing Settings (RAG)</h2>
             </div>
 
@@ -159,7 +159,7 @@ const SettingsPage = () => {
                   type="number"
                   value={chunkSize}
                   onChange={(e) => setChunkSize(parseInt(e.target.value) || 256)}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white text-neutral-900"
+                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-900"
                 />
               </div>
 
@@ -169,7 +169,7 @@ const SettingsPage = () => {
                   type="number"
                   value={chunkOverlap}
                   onChange={(e) => setChunkOverlap(parseInt(e.target.value) || 10)}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white text-neutral-900"
+                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-900"
                 />
               </div>
 
@@ -179,7 +179,7 @@ const SettingsPage = () => {
                   type="number"
                   value={kValue}
                   onChange={(e) => setKValue(parseInt(e.target.value) || 3)}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white text-neutral-900"
+                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-900"
                 />
               </div>
             </div>
@@ -188,20 +188,20 @@ const SettingsPage = () => {
               {/* Reranking switch */}
               <div className="flex items-center justify-between p-2 bg-neutral-50 rounded-xl border border-neutral-100">
                 <div className="space-y-0.5">
-                  <span className="text-xs font-bold text-neutral-750">Rerank Retrieved Chunks</span>
-                  <p className="text-[10px] text-neutral-450">Runs FlashRank reranker to filter out low-match text</p>
+                  <span className="text-xs font-bold text-neutral-755">Rerank Retrieved Chunks</span>
+                  <p className="text-[10px] text-neutral-450 font-semibold">Runs FlashRank reranker to filter out low-match text</p>
                 </div>
                 <input
                   type="checkbox"
                   checked={reranking}
                   onChange={(e) => setReranking(e.target.checked)}
-                  className="w-8 h-4 rounded-full border-neutral-350 text-emerald-600 focus:ring-emerald-500/10 cursor-pointer"
+                  className="w-8 h-4 rounded-full border-neutral-350 text-[#16a34a] focus:ring-green-500/10 cursor-pointer"
                 />
               </div>
 
               {/* Hybrid search weights */}
               <div className="space-y-1.5">
-                <div className="flex justify-between text-xs font-bold text-neutral-600">
+                <div className="flex justify-between text-xs font-bold text-neutral-605">
                   <span>Hybrid Weights Selection</span>
                   <span>{hybridWeight}% Vector vs {100 - hybridWeight}% BM25</span>
                 </div>
@@ -211,7 +211,7 @@ const SettingsPage = () => {
                   max="100"
                   value={hybridWeight}
                   onChange={(e) => setHybridWeight(parseInt(e.target.value))}
-                  className="w-full h-1.5 bg-neutral-100 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                  className="w-full h-1.5 bg-neutral-100 rounded-lg appearance-none cursor-pointer accent-[#16a34a]"
                 />
               </div>
             </div>
@@ -220,7 +220,7 @@ const SettingsPage = () => {
           {/* 4. Security guardrails */}
           <div className="bg-white border border-neutral-200 rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] space-y-4">
             <div className="flex items-center gap-2 border-b border-neutral-100 pb-3">
-              <Shield className="h-4.5 w-4.5 text-emerald-600" />
+              <Shield className="h-4.5 w-4.5 text-[#16a34a]" />
               <h2 className="font-bold text-sm text-neutral-900">Security Guardrails & Filters</h2>
             </div>
 
@@ -228,39 +228,39 @@ const SettingsPage = () => {
               <label className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl border border-neutral-100 cursor-pointer select-none">
                 <div className="space-y-0.5 pr-2">
                   <p className="text-xs font-bold text-neutral-750">LLM Guardrails</p>
-                  <p className="text-[9px] text-neutral-450 leading-tight">Enforces safe output bounds</p>
+                  <p className="text-[9px] text-neutral-450 leading-tight font-semibold">Enforces safe output bounds</p>
                 </div>
                 <input
                   type="checkbox"
                   checked={guardrails}
                   onChange={(e) => setGuardrails(e.target.checked)}
-                  className="rounded border-neutral-350 text-emerald-600 focus:ring-emerald-500/10 h-4 w-4 cursor-pointer"
+                  className="rounded border-neutral-350 text-[#16a34a] focus:ring-green-500/10 h-4 w-4 cursor-pointer"
                 />
               </label>
 
               <label className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl border border-neutral-100 cursor-pointer select-none">
                 <div className="space-y-0.5 pr-2">
                   <p className="text-xs font-bold text-neutral-750">PII De-identification</p>
-                  <p className="text-[9px] text-neutral-450 leading-tight">Scrubs names, emails, phones</p>
+                  <p className="text-[9px] text-neutral-450 leading-tight font-semibold">Scrubs names, emails, phones</p>
                 </div>
                 <input
                   type="checkbox"
                   checked={piiDetection}
                   onChange={(e) => setPiiDetection(e.target.checked)}
-                  className="rounded border-neutral-350 text-emerald-600 focus:ring-emerald-500/10 h-4 w-4 cursor-pointer"
+                  className="rounded border-neutral-350 text-[#16a34a] focus:ring-green-500/10 h-4 w-4 cursor-pointer"
                 />
               </label>
 
               <label className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl border border-neutral-100 cursor-pointer select-none">
                 <div className="space-y-0.5 pr-2">
-                  <p className="text-xs font-bold text-neutral-750">Topic Filtering</p>
-                  <p className="text-[9px] text-neutral-450 leading-tight">Blocks non-research topics</p>
+                  <p className="text-xs font-bold text-neutral-755">Topic Filtering</p>
+                  <p className="text-[9px] text-neutral-455 leading-tight font-semibold">Blocks non-research topics</p>
                 </div>
                 <input
                   type="checkbox"
                   checked={topicFiltering}
                   onChange={(e) => setTopicFiltering(e.target.checked)}
-                  className="rounded border-neutral-350 text-emerald-600 focus:ring-emerald-500/10 h-4 w-4 cursor-pointer"
+                  className="rounded border-neutral-350 text-[#16a34a] focus:ring-green-500/10 h-4 w-4 cursor-pointer"
                 />
               </label>
             </div>
@@ -272,20 +272,20 @@ const SettingsPage = () => {
             {/* ETL Sync configurations */}
             <div className="bg-white border border-neutral-200 rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] space-y-4">
               <div className="flex items-center gap-2 border-b border-neutral-100 pb-3">
-                <RefreshCw className="h-4.5 w-4.5 text-emerald-600" />
+                <RefreshCw className="h-4.5 w-4.5 text-[#16a34a]" />
                 <h2 className="font-bold text-sm text-neutral-900">ETL Refresh Configurations</h2>
               </div>
               
               <div className="flex items-center justify-between py-1">
                 <div className="space-y-0.5">
                   <p className="text-xs font-bold text-neutral-750">Nightly Data Refresh</p>
-                  <p className="text-[10px] text-neutral-450">Triggers re-parsing of failed URL pages</p>
+                  <p className="text-[10px] text-neutral-450 font-semibold">Triggers re-parsing of failed URL pages</p>
                 </div>
                 <input
                   type="checkbox"
                   checked={nightlyRefresh}
                   onChange={(e) => setNightlyRefresh(e.target.checked)}
-                  className="w-8 h-4 rounded-full border-neutral-350 text-emerald-600 focus:ring-emerald-500/10 cursor-pointer"
+                  className="w-8 h-4 rounded-full border-neutral-350 text-[#16a34a] focus:ring-green-500/10 cursor-pointer"
                 />
               </div>
 
@@ -296,7 +296,7 @@ const SettingsPage = () => {
                     type="time"
                     value={refreshTime}
                     onChange={(e) => setRefreshTime(e.target.value)}
-                    className="px-3 py-1.5 border border-neutral-200 rounded-lg text-xs bg-white text-neutral-700 cursor-pointer w-full"
+                    className="px-3 py-1.5 border border-neutral-200 rounded-lg text-xs bg-white text-neutral-705 cursor-pointer w-full"
                   />
                 </div>
               )}
@@ -305,20 +305,20 @@ const SettingsPage = () => {
             {/* Notifications */}
             <div className="bg-white border border-neutral-200 rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] space-y-4">
               <div className="flex items-center gap-2 border-b border-neutral-100 pb-3">
-                <Bell className="h-4.5 w-4.5 text-emerald-600" />
+                <Bell className="h-4.5 w-4.5 text-[#16a34a]" />
                 <h2 className="font-bold text-sm text-neutral-900">Workspace Alerts</h2>
               </div>
 
               <div className="flex items-center justify-between py-2">
                 <div className="space-y-0.5">
                   <p className="text-xs font-bold text-neutral-750">Email Alerts</p>
-                  <p className="text-[10px] text-neutral-450">Get summaries of compiled research reports</p>
+                  <p className="text-[10px] text-neutral-450 font-semibold">Get summaries of compiled research reports</p>
                 </div>
                 <input
                   type="checkbox"
                   checked={emailAlerts}
                   onChange={(e) => setEmailAlerts(e.target.checked)}
-                  className="w-8 h-4 rounded-full border-neutral-350 text-emerald-600 focus:ring-emerald-500/10 cursor-pointer"
+                  className="w-8 h-4 rounded-full border-neutral-350 text-[#16a34a] focus:ring-green-500/10 cursor-pointer"
                 />
               </div>
             </div>
@@ -328,7 +328,7 @@ const SettingsPage = () => {
           {/* 6. LLMGate API key display */}
           <div className="bg-white border border-neutral-200 rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] space-y-4">
             <div className="flex items-center gap-2 border-b border-neutral-100 pb-3">
-              <Key className="h-4.5 w-4.5 text-emerald-600" />
+              <Key className="h-4.5 w-4.5 text-[#16a34a]" />
               <h2 className="font-bold text-sm text-neutral-900">Developer Integrations</h2>
             </div>
             
@@ -344,12 +344,12 @@ const SettingsPage = () => {
                 <button 
                   type="button"
                   onClick={() => navigator.clipboard.writeText('sk-llmgate-f823a9d72b2203e0c0')}
-                  className="bg-white border border-neutral-200 hover:border-neutral-300 text-neutral-700 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"
+                  className="bg-white border border-neutral-200 hover:border-neutral-350 text-neutral-705 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"
                 >
                   Copy
                 </button>
               </div>
-              <p className="text-[10px] text-neutral-400 mt-1">Used to authenticates client API calls via custom MCP micro-services.</p>
+              <p className="text-[10px] text-neutral-400 mt-1 font-semibold">Used to authenticates client API calls via custom MCP micro-services.</p>
             </div>
           </div>
 
@@ -357,23 +357,23 @@ const SettingsPage = () => {
           <div className="bg-red-50/30 border border-red-200 rounded-xl p-5 space-y-4">
             <div className="flex items-center gap-2 border-b border-red-200 pb-3">
               <ShieldAlert className="h-4.5 w-4.5 text-red-650" />
-              <h2 className="font-bold text-sm text-red-750">Danger Zone</h2>
+              <h2 className="font-bold text-sm text-red-755">Danger Zone</h2>
             </div>
 
-            <p className="text-xs text-neutral-600 leading-normal">
+            <p className="text-xs text-neutral-600 leading-normal font-semibold">
               Irreversible actions that purge indices, database records, and authentication states from local storage.
             </p>
 
             <div className="flex flex-wrap gap-2.5">
               <button 
                 type="button"
-                className="bg-white border border-red-200 hover:bg-red-50 text-red-700 font-semibold px-4 py-2 rounded-lg text-xs cursor-pointer transition-colors"
+                className="bg-white border border-red-200 hover:bg-red-50 text-red-700 font-bold px-4 py-2 rounded-lg text-xs cursor-pointer transition-colors"
               >
                 Clear Database Cache
               </button>
               <button 
                 type="button"
-                className="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg text-xs cursor-pointer transition-colors shadow-sm"
+                className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-lg text-xs cursor-pointer transition-colors shadow-sm"
               >
                 Reset Account
               </button>

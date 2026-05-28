@@ -80,7 +80,7 @@ const SourceDetailPage = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-100 pb-4">
           <button 
             onClick={() => navigate('/library')}
-            className="flex items-center gap-1.5 text-xs font-bold text-neutral-550 hover:text-emerald-650 transition-colors"
+            className="flex items-center gap-1.5 text-xs font-bold text-neutral-550 hover:text-[#16a34a] transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Library
@@ -89,14 +89,14 @@ const SourceDetailPage = () => {
           <div className="flex items-center gap-2.5">
             <button 
               onClick={handleReingest}
-              className="bg-white border border-neutral-200 hover:border-neutral-300 text-neutral-700 font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all shadow-sm cursor-pointer"
+              className="bg-white border border-neutral-200 hover:border-neutral-350 text-neutral-705 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all shadow-sm cursor-pointer"
             >
               <RefreshCw className="h-4 w-4 text-neutral-500" />
               <span>Re-ingest Source</span>
             </button>
             <button 
               onClick={handleDelete}
-              className="bg-red-50 hover:bg-red-100 text-red-700 font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all border border-red-100 cursor-pointer"
+              className="bg-red-50 hover:bg-red-100 text-red-700 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all border border-red-100 cursor-pointer"
             >
               <Trash2 className="h-4 w-4" />
               <span>Delete Document</span>
@@ -108,7 +108,7 @@ const SourceDetailPage = () => {
         <div className="bg-white border border-neutral-200 rounded-2xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-neutral-50 border border-neutral-150 rounded-xl text-neutral-600">
-              {docType === 'URL' ? <Globe className="h-6 w-6 text-emerald-500" /> : <FileText className="h-6 w-6 text-rose-500" />}
+              {docType === 'URL' ? <Globe className="h-6 w-6 text-green-600" /> : <FileText className="h-6 w-6 text-rose-500" />}
             </div>
             <div>
               <h1 className="text-lg font-black text-neutral-900 tracking-tight leading-tight">{docName}</h1>
@@ -117,12 +117,12 @@ const SourceDetailPage = () => {
                 <span>•</span>
                 <span>4 chunks parsed</span>
                 <span>•</span>
-                <span className="text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded font-bold">Qdrant Indexed</span>
+                <span className="text-green-700 bg-green-50 px-1.5 py-0.5 rounded font-bold">Qdrant Indexed</span>
               </div>
             </div>
           </div>
 
-          <div className="flex gap-4 text-xs font-semibold text-neutral-500">
+          <div className="flex gap-4 text-xs font-semibold text-neutral-505">
             <div>
               <p className="text-[10px] text-neutral-400 uppercase">Embedding Model</p>
               <p className="text-neutral-850 font-bold">all-MiniLM-L6-v2</p>
@@ -140,7 +140,7 @@ const SourceDetailPage = () => {
           {/* Left Column: Document Preview (5 cols) */}
           <div className="lg:col-span-5 space-y-4">
             <h2 className="font-bold text-sm text-neutral-800 uppercase tracking-wider flex items-center gap-2">
-              <BookOpen className="h-4.5 w-4.5 text-emerald-600" />
+              <BookOpen className="h-4.5 w-4.5 text-[#16a34a]" />
               Source Content Preview
             </h2>
 
@@ -170,7 +170,7 @@ const SourceDetailPage = () => {
             {/* Chunk Viewer section */}
             <div className="space-y-4 flex-1 flex flex-col min-h-0">
               <h2 className="font-bold text-sm text-neutral-800 uppercase tracking-wider flex items-center gap-2">
-                <Layers className="h-4.5 w-4.5 text-emerald-600" />
+                <Layers className="h-4.5 w-4.5 text-[#16a34a]" />
                 Parsed Vector Chunks
               </h2>
 
@@ -179,8 +179,8 @@ const SourceDetailPage = () => {
                   <div key={chunk.id} className="p-4 space-y-2 hover:bg-neutral-50/50 transition-colors">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Chunk #{chunk.id} • {chunk.tokens} tokens</span>
-                      <span className="flex items-center gap-1 text-[9px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-bold font-mono">
-                        <CheckCircle className="h-3 w-3 text-emerald-500" />
+                      <span className="flex items-center gap-1 text-[9px] text-green-700 bg-green-50 px-2 py-0.5 rounded font-bold font-mono">
+                        <CheckCircle className="h-3 w-3 text-green-600" />
                         {chunk.vectorId}
                       </span>
                     </div>
@@ -194,13 +194,13 @@ const SourceDetailPage = () => {
 
             {/* Document Specific Chat */}
             <div className="bg-white border border-neutral-200 rounded-2xl p-4 shadow-[0_4px_16px_rgba(0,0,0,0.01)] space-y-4">
-              <span className="text-xs font-bold text-neutral-450 uppercase block">Query This Document Only</span>
+              <span className="text-xs font-bold text-neutral-455 uppercase block">Query This Document Only</span>
               
               {/* Local chat log */}
               <div className="space-y-2 max-h-24 overflow-y-auto">
                 {chatLog.map((chat, idx) => (
                   <div key={idx} className={`p-2 rounded-lg text-xs leading-normal font-medium ${
-                    chat.role === 'user' ? 'bg-neutral-50 text-neutral-900 text-right' : 'bg-emerald-50/50 text-emerald-800'
+                    chat.role === 'user' ? 'bg-neutral-50 text-neutral-900 text-right' : 'bg-green-50/50 text-green-800'
                   }`}>
                     {chat.text}
                   </div>
@@ -215,7 +215,7 @@ const SourceDetailPage = () => {
                   value={docQuery}
                   disabled={isSearching}
                   onChange={(e) => setDocQuery(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white text-neutral-900"
+                  className="flex-1 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-900"
                 />
                 <button 
                   type="submit"

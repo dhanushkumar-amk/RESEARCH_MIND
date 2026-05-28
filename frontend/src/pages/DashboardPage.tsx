@@ -97,7 +97,7 @@ const DashboardPage = () => {
             <h1 className="text-2xl lg:text-3xl font-extrabold text-neutral-900 tracking-tight">
               Good morning, {userName}
             </h1>
-            <p className="text-sm text-neutral-500 mt-1">
+            <p className="text-sm text-neutral-500 mt-1 font-medium">
               Here is what's happening with ResearchMind today.
             </p>
           </div>
@@ -106,21 +106,21 @@ const DashboardPage = () => {
           <div className="flex items-center gap-2.5">
             <button 
               onClick={() => navigate(ROUTES.LIBRARY, { state: { openUpload: true } })}
-              className="bg-white border border-neutral-200 hover:border-neutral-300 text-neutral-700 font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all shadow-sm cursor-pointer"
+              className="bg-white border border-neutral-200 hover:border-neutral-350 text-neutral-700 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all shadow-sm cursor-pointer"
             >
               <Upload className="h-4 w-4 text-neutral-500" />
               <span>Upload Document</span>
             </button>
             <button 
               onClick={() => navigate(ROUTES.RESEARCH)}
-              className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all border border-emerald-100 cursor-pointer"
+              className="bg-green-50 text-[#16a34a] hover:bg-green-100 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all border border-green-100 cursor-pointer"
             >
               <Plus className="h-4 w-4" />
               <span>Start Research</span>
             </button>
             <button 
               onClick={() => navigate('/reports')}
-              className="bg-neutral-950 text-white hover:bg-neutral-800 font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all shadow-sm cursor-pointer"
+              className="bg-neutral-950 text-white hover:bg-neutral-850 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all shadow-sm cursor-pointer"
             >
               <FileText className="h-4 w-4" />
               <span>View Reports</span>
@@ -147,8 +147,8 @@ const DashboardPage = () => {
                   </div>
                 </div>
                 <div className="mt-2.5">
-                  <h3 className="text-2xl font-bold text-neutral-900 tracking-tight">{stat.value}</h3>
-                  <p className="text-[10px] text-neutral-400 font-medium mt-1">{stat.subtext}</p>
+                  <h3 className="text-2xl font-black text-neutral-900 tracking-tight">{stat.value}</h3>
+                  <p className="text-[10px] text-neutral-400 font-semibold mt-1">{stat.subtext}</p>
                 </div>
               </motion.div>
             );
@@ -162,10 +162,10 @@ const DashboardPage = () => {
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Brain className="h-5 w-5 text-emerald-600" />
+                <Brain className="h-5 w-5 text-[#16a34a]" />
                 <h2 className="font-bold text-lg text-neutral-900">Recent Research Queries</h2>
               </div>
-              <span className="text-xs text-neutral-400 font-semibold uppercase tracking-wider">Last 5 questions</span>
+              <span className="text-xs text-neutral-405 font-bold uppercase tracking-wider">Last 5 questions</span>
             </div>
 
             <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
@@ -174,13 +174,13 @@ const DashboardPage = () => {
                   <div 
                     key={item.id}
                     onClick={() => navigate(ROUTES.RESEARCH, { state: { initialQuery: item.question } })}
-                    className="p-4 hover:bg-neutral-50 transition-colors flex items-center justify-between gap-4 cursor-pointer group"
+                    className="p-4 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-4 cursor-pointer group"
                   >
-                    <div className="space-y-1 min-w-0 flex-1">
-                      <p className="text-sm font-bold text-neutral-850 group-hover:text-emerald-650 transition-colors line-clamp-1">
+                    <div className="space-y-1.5 min-w-0 flex-1">
+                      <p className="text-sm font-bold text-neutral-850 group-hover:text-[#16a34a] transition-colors line-clamp-1">
                         {item.question}
                       </p>
-                      <div className="flex items-center gap-2 text-[10px] text-neutral-400 font-medium">
+                      <div className="flex items-center gap-2 text-[10px] text-neutral-400 font-semibold">
                         <span className="bg-neutral-100 text-neutral-600 px-1.5 py-0.5 rounded">{item.category}</span>
                         <span>•</span>
                         <span>{item.timestamp}</span>
@@ -190,9 +190,9 @@ const DashboardPage = () => {
                     <div className="flex items-center gap-3">
                       <div className="text-right">
                         <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Grounding</p>
-                        <p className="text-xs font-extrabold text-emerald-600">{item.accuracy}</p>
+                        <p className="text-xs font-extrabold text-[#16a34a]">{item.accuracy}</p>
                       </div>
-                      <ArrowRight className="h-4 w-4 text-neutral-300 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                      <ArrowRight className="h-4 w-4 text-neutral-300 group-hover:text-[#16a34a] group-hover:translate-x-0.5 transition-all flex-shrink-0" />
                     </div>
                   </div>
                 ))}
@@ -207,12 +207,12 @@ const DashboardPage = () => {
             <div className="space-y-3.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <BookOpen className="h-5 w-5 text-emerald-600" />
+                  <BookOpen className="h-5 w-5 text-[#16a34a]" />
                   <h2 className="font-bold text-lg text-neutral-900">Recent Documents</h2>
                 </div>
                 <button 
                   onClick={() => navigate(ROUTES.LIBRARY)}
-                  className="text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
+                  className="text-xs font-bold text-[#16a34a] hover:text-green-700 transition-colors"
                 >
                   Manage All
                 </button>
@@ -228,8 +228,8 @@ const DashboardPage = () => {
                     >
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-bold text-neutral-800 truncate">{doc.name}</p>
-                        <div className="flex items-center gap-1.5 mt-0.5 text-[9px] text-neutral-400 font-semibold uppercase">
-                          <span className="text-emerald-600">{doc.type}</span>
+                        <div className="flex items-center gap-1.5 mt-0.5 text-[9px] text-neutral-400 font-bold uppercase">
+                          <span className="text-[#16a34a]">{doc.type}</span>
                           <span>•</span>
                           <span>{doc.size}</span>
                         </div>
@@ -244,23 +244,23 @@ const DashboardPage = () => {
             {/* System Health */}
             <div className="space-y-3.5">
               <div className="flex items-center gap-2">
-                <Server className="h-5 w-5 text-emerald-600" />
+                <Server className="h-5 w-5 text-[#16a34a]" />
                 <h2 className="font-bold text-lg text-neutral-900">System Health</h2>
               </div>
 
               <div className="bg-white border border-neutral-200 rounded-xl p-4 shadow-[0_2px_8px_rgba(0,0,0,0.01)] space-y-3">
                 {systemServices.map((service, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-xs border-b border-neutral-50 last:border-0 pb-2.5 last:pb-0">
+                  <div key={idx} className="flex items-center justify-between text-xs border-b border-neutral-55 last:border-0 pb-2.5 last:pb-0">
                     <div className="space-y-0.5">
                       <p className="font-bold text-neutral-800">{service.name}</p>
-                      <div className="flex items-center gap-1 text-[9px] text-neutral-450">
+                      <div className="flex items-center gap-1 text-[9px] text-neutral-450 font-semibold">
                         <span>{service.version}</span>
                         <span>•</span>
                         <span>Latency: {service.latency}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[10px] font-bold">
-                      <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
+                    <div className="flex items-center gap-1.5 bg-green-50 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold">
+                      <CheckCircle className="h-3.5 w-3.5 text-[#16a34a]" />
                       <span className="capitalize">{service.status}</span>
                     </div>
                   </div>

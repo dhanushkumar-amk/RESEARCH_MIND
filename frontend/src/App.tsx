@@ -16,6 +16,10 @@ import ReportPage from '@/pages/ReportPage';
 import AnalyticsPage from '@/pages/AnalyticsPage';
 import SettingsPage from '@/pages/SettingsPage';
 import SourceDetailPage from '@/pages/SourceDetailPage';
+import HistoryPage from '@/pages/HistoryPage';
+import PricingPage from '@/pages/PricingPage';
+import HelpPage from '@/pages/HelpPage';
+import ErrorPage from '@/pages/ErrorPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 
 function App() {
@@ -37,9 +41,14 @@ function App() {
           <Route path={ROUTES.RESEARCH} element={<ResearchPage />} />
           <Route path={ROUTES.LIBRARY} element={<LibraryPage />} />
           <Route path={ROUTES.REPORT} element={<ReportPage />} />
+          <Route path="/reports" element={<ReportPage />} />
           <Route path={ROUTES.ANALYTICS} element={<AnalyticsPage />} />
           <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
           <Route path={ROUTES.SOURCE_DETAIL} element={<SourceDetailPage />} />
+          <Route path={ROUTES.HISTORY} element={<HistoryPage />} />
+          <Route path={ROUTES.PRICING} element={<PricingPage />} />
+          <Route path={ROUTES.HELP} element={<HelpPage />} />
+          <Route path={ROUTES.ERROR} element={<ErrorPage />} />
           <Route path={ROUTES.NOT_FOUND} element={<NotFoundPage />} />
         </Route>
       </Routes>

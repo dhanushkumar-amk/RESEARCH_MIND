@@ -200,7 +200,7 @@ const LibraryPage = () => {
           <h1 className="text-2xl lg:text-3xl font-extrabold text-neutral-900 tracking-tight">
             Document Library
           </h1>
-          <p className="text-sm text-neutral-500 mt-1">
+          <p className="text-sm text-neutral-500 mt-1 font-medium">
             Ingest PDFs, websites, Word documents, and YouTube videos into your unified vector space.
           </p>
         </div>
@@ -216,7 +216,7 @@ const LibraryPage = () => {
             onClick={triggerFileInput}
             className={`border-2 border-dashed rounded-2xl p-6 text-center flex flex-col items-center justify-center cursor-pointer transition-all h-[200px] ${
               isDragging 
-                ? 'border-emerald-500 bg-emerald-50/[0.15]' 
+                ? 'border-[#16a34a] bg-green-50/[0.15]' 
                 : 'border-neutral-200 bg-white hover:border-neutral-350 hover:bg-neutral-50/30'
             }`}
           >
@@ -231,7 +231,7 @@ const LibraryPage = () => {
               <Upload className="h-6 w-6" />
             </div>
             <p className="text-sm font-bold text-neutral-800">Drag & Drop files here</p>
-            <p className="text-xs text-neutral-450 mt-1">or click to browse. Supports PDF, DOCX, TXT (Max 50MB)</p>
+            <p className="text-xs text-neutral-450 mt-1 font-semibold">or click to browse. Supports PDF, DOCX, TXT (Max 50MB)</p>
           </div>
 
           {/* Column 2: Web & YouTube URL Ingestors */}
@@ -247,10 +247,10 @@ const LibraryPage = () => {
                     placeholder="https://example.com/research-paper"
                     value={urlInput}
                     onChange={(e) => setUrlInput(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white transition-all text-neutral-900 placeholder-neutral-400"
+                    className="w-full pl-9 pr-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white transition-all text-neutral-900 placeholder-neutral-400"
                   />
                 </div>
-                <button type="submit" className="bg-neutral-950 hover:bg-neutral-850 text-white text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer transition-colors">
+                <button type="submit" className="bg-neutral-950 hover:bg-neutral-850 text-white text-xs font-bold px-3 py-2 rounded-lg cursor-pointer transition-colors">
                   Ingest
                 </button>
               </div>
@@ -267,10 +267,10 @@ const LibraryPage = () => {
                     placeholder="https://youtube.com/watch?v=..."
                     value={youtubeInput}
                     onChange={(e) => setYoutubeInput(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white transition-all text-neutral-900 placeholder-neutral-400"
+                    className="w-full pl-9 pr-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white transition-all text-neutral-900 placeholder-neutral-400"
                   />
                 </div>
-                <button type="submit" className="bg-neutral-950 hover:bg-neutral-850 text-white text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer transition-colors">
+                <button type="submit" className="bg-neutral-950 hover:bg-neutral-850 text-white text-xs font-bold px-3 py-2 rounded-lg cursor-pointer transition-colors">
                   Ingest
                 </button>
               </div>
@@ -282,24 +282,24 @@ const LibraryPage = () => {
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Storage Capacity (AWS S3)</span>
-                <HardDrive className="h-4 w-4 text-emerald-600" />
+                <HardDrive className="h-4 w-4 text-[#16a34a]" />
               </div>
               <p className="text-2xl font-black text-neutral-900 tracking-tight mt-1">{totalStorageMB} MB <span className="text-xs font-bold text-neutral-400">of 100 MB</span></p>
             </div>
 
             <div className="space-y-2">
               <div className="w-full h-2 bg-neutral-100 rounded-full overflow-hidden">
-                <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${storagePct}%` }} />
+                <div className="h-full bg-[#16a34a] rounded-full" style={{ width: `${storagePct}%` }} />
               </div>
-              <div className="flex justify-between items-center text-[10px] text-neutral-400 font-semibold">
+              <div className="flex justify-between items-center text-[10px] text-neutral-405 font-bold">
                 <span>{storagePct}% USED</span>
                 <span>{100 - totalStorageMB} MB AVAILABLE</span>
               </div>
             </div>
 
-            <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-2.5 flex items-start gap-2">
-              <Info className="h-4 w-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-              <p className="text-[10px] text-emerald-800 leading-normal">
+            <div className="bg-green-50/50 border border-green-100 rounded-xl p-2.5 flex items-start gap-2">
+              <Info className="h-4 w-4 text-[#16a34a] flex-shrink-0 mt-0.5" />
+              <p className="text-[10px] text-green-850 leading-normal font-semibold">
                 Files are indexed into vector chunks to allow semantic search queries within the Research workspace.
               </p>
             </div>
@@ -317,7 +317,7 @@ const LibraryPage = () => {
               placeholder="Search library documents..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white transition-all text-neutral-900 placeholder-neutral-400"
+              className="w-full pl-10 pr-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white transition-all text-neutral-900 placeholder-neutral-400"
             />
           </div>
 
@@ -327,7 +327,7 @@ const LibraryPage = () => {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value as any)}
-              className="px-3 py-1.5 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white text-neutral-700 cursor-pointer"
+              className="px-3 py-1.5 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-705 cursor-pointer"
             >
               <option value="all">All Types</option>
               <option value="PDF">PDFs</option>
@@ -343,7 +343,7 @@ const LibraryPage = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="px-3 py-1.5 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white text-neutral-700 cursor-pointer"
+              className="px-3 py-1.5 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-705 cursor-pointer"
             >
               <option value="all">All Statuses</option>
               <option value="indexed">Indexed</option>
@@ -362,16 +362,16 @@ const LibraryPage = () => {
               exit={{ opacity: 0, y: -10 }}
               className="bg-white border border-neutral-200 rounded-xl p-4 shadow-[0_2px_8px_rgba(0,0,0,0.01)] space-y-3"
             >
-              <p className="text-xs font-bold text-neutral-800">Processing Documents</p>
+              <p className="text-xs font-bold text-neutral-850">Processing Documents</p>
               {documents.filter(d => d.status === 'processing').map(doc => (
                 <div key={doc.id} className="space-y-1">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="font-semibold text-neutral-700 truncate max-w-sm">{doc.name}</span>
+                    <span className="font-bold text-neutral-700 truncate max-w-sm">{doc.name}</span>
                     <span className="text-[10px] text-neutral-405 font-bold">{doc.progress}%</span>
                   </div>
                   <div className="w-full h-1.5 bg-neutral-100 rounded-full overflow-hidden">
                     <div 
-                      className="h-full bg-emerald-500 transition-all duration-300" 
+                      className="h-full bg-[#16a34a] transition-all duration-300" 
                       style={{ width: `${doc.progress}%` }} 
                     />
                   </div>
@@ -386,7 +386,7 @@ const LibraryPage = () => {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left text-xs">
               <thead>
-                <tr className="bg-neutral-50/50 border-b border-neutral-200 text-neutral-450 uppercase font-semibold text-[10px] tracking-wider">
+                <tr className="bg-neutral-50/50 border-b border-neutral-200 text-neutral-455 uppercase font-bold text-[10px] tracking-wider">
                   <th className="p-4">Name / Title</th>
                   <th className="p-4">Type</th>
                   <th className="p-4">Status</th>
@@ -403,16 +403,16 @@ const LibraryPage = () => {
                     {/* Name */}
                     <td 
                       onClick={() => navigate(`/source/${doc.id}`)}
-                      className="p-4 font-bold text-neutral-850 max-w-[280px] truncate hover:text-emerald-650 transition-colors cursor-pointer"
+                      className="p-4 font-bold text-neutral-855 max-w-[280px] truncate hover:text-[#16a34a] transition-colors cursor-pointer"
                     >
                       {doc.name}
                     </td>
                     
                     {/* Type icon/badge */}
                     <td className="p-4 text-neutral-600">
-                      <span className="inline-flex items-center gap-1.5 font-semibold text-[10px]">
+                      <span className="inline-flex items-center gap-1.5 font-bold text-[10px]">
                         {doc.type === 'PDF' && <FileText className="h-4 w-4 text-rose-500" />}
-                        {doc.type === 'URL' && <Globe className="h-4 w-4 text-emerald-500" />}
+                        {doc.type === 'URL' && <Globe className="h-4 w-4 text-green-600" />}
                         {doc.type === 'YouTube' && <YoutubeIcon className="h-4 w-4 text-rose-500" />}
                         {doc.type === 'Word' && <FileText className="h-4 w-4 text-blue-500" />}
                         {doc.type}
@@ -422,7 +422,7 @@ const LibraryPage = () => {
                     {/* Status badge */}
                     <td className="p-4">
                       {doc.status === 'indexed' && (
-                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold px-2 py-0.5 rounded">
+                        <span className="bg-green-50 text-green-700 border border-green-100 text-[10px] font-bold px-2 py-0.5 rounded">
                           Indexed
                         </span>
                       )}
@@ -439,17 +439,17 @@ const LibraryPage = () => {
                     </td>
 
                     {/* Chunks */}
-                    <td className="p-4 text-neutral-500 font-mono font-semibold">
+                    <td className="p-4 text-neutral-505 font-mono font-bold">
                       {doc.status === 'indexed' ? doc.chunks : '—'}
                     </td>
 
                     {/* Size */}
-                    <td className="p-4 text-neutral-500 font-medium">
+                    <td className="p-4 text-neutral-500 font-semibold">
                       {doc.size}
                     </td>
 
                     {/* Date added */}
-                    <td className="p-4 text-neutral-500 font-medium">
+                    <td className="p-4 text-neutral-500 font-semibold">
                       {doc.dateAdded}
                     </td>
 
