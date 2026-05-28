@@ -36,6 +36,8 @@ const Navbar = () => {
       .map((part) => part[0]?.toUpperCase() ?? '')
       .join('') || 'RM';
 
+  const userFirstLetter = userName.trim().charAt(0).toUpperCase() || 'R';
+
   const creditsBalance = 5;
 
   const navItems = [
@@ -46,7 +48,7 @@ const Navbar = () => {
   ];
 
   const dropdownItems = [
-    { label: 'Profile', path: ROUTES.SETTINGS, icon: User },
+    { label: 'Profile', path: ROUTES.PROFILE, icon: User },
     { label: 'Dashboard', path: ROUTES.DASHBOARD, icon: LayoutDashboard },
     { label: 'Research', path: ROUTES.RESEARCH, icon: Search },
     { label: 'Library', path: ROUTES.LIBRARY, icon: BookOpen },
@@ -149,9 +151,17 @@ const Navbar = () => {
                 }`}
                 aria-label="User menu"
               >
-                <div className="flex h-7.5 w-7.5 items-center justify-center rounded-full bg-gradient-to-br from-neutral-900 to-neutral-700 text-white shadow-[0_6px_16px_rgba(10,10,10,0.18)]">
-                  <User className="h-3.8 w-3.8" />
-                </div>
+                {user?.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={userName}
+                    className="h-7.5 w-7.5 rounded-full object-cover shadow-[0_4px_10px_rgba(16,185,129,0.15)]"
+                  />
+                ) : (
+                  <div className="flex h-7.5 w-7.5 items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 to-emerald-500 text-white text-xs font-bold shadow-[0_4px_10px_rgba(16,185,129,0.15)]">
+                    {userFirstLetter}
+                  </div>
+                )}
                 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isDropdownOpen ? 'rotate-180 text-neutral-700' : 'text-neutral-400'}`} />
               </button>
 
@@ -161,9 +171,17 @@ const Navbar = () => {
                   <div className="absolute right-0 z-50 mt-3 w-64 rounded-3xl border border-neutral-200 bg-white p-2 shadow-[0_20px_50px_rgba(0,0,0,0.12)]">
                     <div className="rounded-2xl bg-neutral-50 px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-900 text-sm font-bold text-white">
-                          {userInitials}
-                        </div>
+                        {user?.avatar ? (
+                          <img
+                            src={user.avatar}
+                            alt={userName}
+                            className="h-10 w-10 rounded-full object-cover shadow-sm"
+                          />
+                        ) : (
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-900 text-sm font-bold text-white">
+                            {userInitials}
+                          </div>
+                        )}
                         <div className="min-w-0">
                           <p className="truncate text-sm font-bold text-neutral-900">{userName}</p>
                           <p className="truncate text-[11px] text-neutral-400">{userEmail}</p>

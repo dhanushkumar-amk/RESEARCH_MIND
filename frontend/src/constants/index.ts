@@ -12,6 +12,7 @@ export const ROUTES = {
   REPORT: '/report/:id',
   ANALYTICS: '/analytics',
   SETTINGS: '/settings',
+  PROFILE: '/profile',
   SOURCE_DETAIL: '/source/:id',
   HISTORY: '/history',
   PRICING: '/pricing',

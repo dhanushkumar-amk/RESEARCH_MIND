@@ -7,6 +7,9 @@ export type AuthUser = {
   isEmailVerified: boolean;
   createdAt: string;
   updatedAt: string;
+  avatar?: string;
+  bio?: string;
+  title?: string;
 };
 
 type BackendUser = {

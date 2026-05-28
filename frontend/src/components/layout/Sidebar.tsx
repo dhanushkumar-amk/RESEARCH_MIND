@@ -110,9 +110,17 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }:
         <div className="p-4 border-t border-neutral-800/80 bg-[#07080b]/50">
           <div className="flex items-center justify-between gap-3 overflow-hidden">
             <div className="flex items-center gap-2.5 overflow-hidden">
-              <div className="h-8 w-8 rounded-full bg-[#16a34a]/15 text-[#16a34a] border border-[#16a34a]/20 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                {userInitials}
-              </div>
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={userName}
+                  className="h-8 w-8 rounded-full object-cover border border-neutral-800 flex-shrink-0"
+                />
+              ) : (
+                <div className="h-8 w-8 rounded-full bg-[#16a34a]/15 text-[#16a34a] border border-[#16a34a]/20 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                  {userInitials}
+                </div>
+              )}
               {!isCollapsed && (
                 <div className="overflow-hidden">
                   <p className="text-xs font-bold text-white truncate">{userName}</p>

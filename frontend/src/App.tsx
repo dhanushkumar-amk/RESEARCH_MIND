@@ -15,6 +15,7 @@ import LibraryPage from '@/pages/LibraryPage';
 import ReportPage from '@/pages/ReportPage';
 import AnalyticsPage from '@/pages/AnalyticsPage';
 import SettingsPage from '@/pages/SettingsPage';
+import ProfilePage from '@/pages/ProfilePage';
 import SourceDetailPage from '@/pages/SourceDetailPage';
 import HistoryPage from '@/pages/HistoryPage';
 import PricingPage from '@/pages/PricingPage';
@@ -44,6 +45,7 @@ function App() {
           <Route path="/reports" element={<ReportPage />} />
           <Route path={ROUTES.ANALYTICS} element={<AnalyticsPage />} />
           <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
+          <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
           <Route path={ROUTES.SOURCE_DETAIL} element={<SourceDetailPage />} />
           <Route path={ROUTES.HISTORY} element={<HistoryPage />} />
           <Route path={ROUTES.PRICING} element={<PricingPage />} />

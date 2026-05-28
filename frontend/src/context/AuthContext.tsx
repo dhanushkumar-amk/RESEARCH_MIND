@@ -35,6 +35,7 @@ type AuthContextValue = {
   verifyResetCode: (payload: VerifyResetPayload) => Promise<{ message: string; resetToken: string }>;
   resetPassword: (payload: ResetPasswordPayload) => Promise<{ message: string }>;
   logout: () => Promise<void>;
+  updateUser: (updatedUser: Partial<AuthUser>) => void;
 };
 
 const ACCESS_TOKEN_KEY = 'researchmind.accessToken';
@@ -66,10 +67,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAuthenticated = Boolean(user && accessToken);
 
   function persistSession(session: AuthSession) {
-    setUser(session.user);
+    const stored = readStoredUser();
+    const mergedUser: AuthUser = {
+      ...session.user,
+      avatar: stored?.avatar || session.user.avatar,
+      bio: stored?.bio || session.user.bio,
+      title: stored?.title || session.user.title,
+      name: stored?.name || session.user.name,
+      email: stored?.email || session.user.email,
+    };
+    setUser(mergedUser);
     setAccessToken(session.accessToken);
     setRefreshToken(session.refreshToken);
-    localStorage.setItem(USER_KEY, JSON.stringify(session.user));
+    localStorage.setItem(USER_KEY, JSON.stringify(mergedUser));
     localStorage.setItem(ACCESS_TOKEN_KEY, session.accessToken);
     localStorage.setItem(REFRESH_TOKEN_KEY, session.refreshToken);
   }
@@ -99,8 +109,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!mounted) {
           return;
         }
-        setUser(currentUser);
-        localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
+        const stored = readStoredUser();
+        const mergedUser: AuthUser = {
+          ...currentUser,
+          avatar: stored?.avatar || currentUser.avatar,
+          bio: stored?.bio || currentUser.bio,
+          title: stored?.title || currentUser.title,
+          name: stored?.name || currentUser.name,
+          email: stored?.email || currentUser.email,
+        };
+        setUser(mergedUser);
+        localStorage.setItem(USER_KEY, JSON.stringify(mergedUser));
       } catch {
         if (!refreshToken) {
           clearSession();
@@ -132,6 +151,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mounted = false;
     };
   }, [accessToken, refreshToken]);
+
+  const updateUser = (updatedFields: Partial<AuthUser>) => {
+    setUser((prev) => {
+      if (!prev) return null;
+      const updated = {
+        ...prev,
+        ...updatedFields,
+        updatedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(USER_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  };
 
   const value: AuthContextValue = {
     user,
@@ -173,6 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     },
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

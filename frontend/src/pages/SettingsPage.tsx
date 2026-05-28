@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '@/constants';
 import {
   Settings, User, Cpu, Database, ShieldAlert,
   RefreshCw, Bell, Key, Trash2, Shield, Info,
@@ -8,11 +10,8 @@ import AppShell from '@/components/layout/AppShell';
 import useAuth from '@/hooks/useAuth';
 
 const SettingsPage = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
-
-  // Profile state
-  const [profileName, setProfileName] = useState(user?.name ?? 'Dhanush');
-  const [profileEmail, setProfileEmail] = useState(user?.email ?? 'dhanush@researchmind.ai');
 
   // LLM Gateway settings
   const [primaryModel, setPrimaryModel] = useState('groq-llama-3.3-70b-versatile');
@@ -71,33 +70,26 @@ const SettingsPage = () => {
 
         <form onSubmit={handleSave} className="space-y-6">
 
-          {/* 1. Profile Settings */}
-          <div className="bg-white border border-neutral-200 rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] space-y-4">
-            <div className="flex items-center gap-2 border-b border-neutral-100 pb-3">
-              <User className="h-4.5 w-4.5 text-[#16a34a]" />
-              <h2 className="font-bold text-sm text-neutral-900">Profile Configurations</h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-neutral-600">Full Name</label>
-                <input
-                  type="text"
-                  value={profileName}
-                  onChange={(e) => setProfileName(e.target.value)}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-900"
-                />
+          {/* 1. Profile Settings Redirect Banner */}
+          <div className="bg-gradient-to-r from-green-50/50 to-emerald-50/20 border border-neutral-200 rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="bg-[#16a34a] text-white p-2 rounded-lg mt-0.5 shadow-[0_4px_10px_rgba(22,163,74,0.15)] flex-shrink-0">
+                <User className="h-4.5 w-4.5 text-white" />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-neutral-600">Email Address</label>
-                <input
-                  type="email"
-                  value={profileEmail}
-                  onChange={(e) => setProfileEmail(e.target.value)}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-900"
-                />
+              <div className="space-y-0.5">
+                <h3 className="font-bold text-sm text-neutral-900">Personal Profile Settings</h3>
+                <p className="text-xs text-neutral-500 font-medium">
+                  Update your display name, contact email, profile picture, and professional bio on the dedicated Profile page.
+                </p>
               </div>
             </div>
+            <button
+              type="button"
+              onClick={() => navigate(ROUTES.PROFILE)}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs transition-colors shrink-0 cursor-pointer shadow-sm"
+            >
+              Go to Profile
+            </button>
           </div>
 
           {/* 2. LLM Gateway settings */}
