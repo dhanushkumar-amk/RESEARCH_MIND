@@ -88,6 +88,10 @@ class Settings(BaseSettings):
     aws_s3_bucket: str | None = Field(default=None, validation_alias=AliasChoices("AWS_S3_BUCKET"))
     aws_region: str = Field(default="us-east-1", validation_alias=AliasChoices("AWS_REGION"))
     hf_token: str | None = Field(default=None, validation_alias=AliasChoices("HF_TOKEN"))
+    groq_api_key: str | None = Field(default=None, validation_alias=AliasChoices("GROQ_API_KEY"))
+    gemini_api_key: str | None = Field(default=None, validation_alias=AliasChoices("GEMINI_API_KEY"))
+    openrouter_api_key: str | None = Field(default=None, validation_alias=AliasChoices("OPENROUTER_API_KEY"))
+    langchain_api_key: str | None = Field(default=None, validation_alias=AliasChoices("LANGCHAIN_API_KEY"))
 
 
 

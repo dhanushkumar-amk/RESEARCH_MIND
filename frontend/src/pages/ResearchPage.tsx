@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import { ROUTES } from '@/constants';
+import { useChat } from '@/hooks/useChat';
 
 interface Source {
   id: string;
@@ -35,14 +36,20 @@ const ResearchPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
-  const [messages, setMessages] = useState<Message[]>([]);
   const [selectedSourceFilter, setSelectedSourceFilter] = useState<'all' | 'specific'>('all');
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
 
   // Multi-agent lifecycle status
   const [activeAgent, setActiveAgent] = useState<'idle' | 'retrieval' | 'research' | 'critic' | 'summary'>('idle');
-  const [isProcessing, setIsProcessing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const {
+    messages,
+    isProcessing,
+    error: chatError,
+    sendMessage,
+    clearChat
+  } = useChat();
 
   // Available specific docs in library for selector
   const availableDocs = [
@@ -56,7 +63,7 @@ const ResearchPage = () => {
     const state = location.state as { initialQuery?: string };
     if (state?.initialQuery) {
       setQuery(state.initialQuery);
-      submitQuery(state.initialQuery);
+      void submitQuery(state.initialQuery);
     }
   }, [location.state]);
 
@@ -70,81 +77,28 @@ const ResearchPage = () => {
   const submitQuery = async (queryText: string) => {
     if (!queryText.trim() || isProcessing) return;
 
-    setIsProcessing(true);
-    // 1. Add user query to conversation history
-    setMessages((prev) => [...prev, { role: 'user', content: queryText }]);
     setQuery('');
-
-    // 2. Run agent pipeline step-by-step
+    
+    // Simulate agent steps transitions
     setActiveAgent('retrieval');
-    await new Promise(resolve => setTimeout(resolve, 1200));
+    const t1 = setTimeout(() => setActiveAgent('research'), 650);
+    const t2 = setTimeout(() => setActiveAgent('critic'), 1300);
+    const t3 = setTimeout(() => setActiveAgent('summary'), 1950);
+    const t4 = setTimeout(() => {
+      setActiveAgent('idle');
+    }, 2600);
 
-    setActiveAgent('research');
-    await new Promise(resolve => setTimeout(resolve, 1400));
-
-    setActiveAgent('critic');
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    setActiveAgent('summary');
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    // 3. Setup Streaming Response
-    const responseTemplate =
-      `Based on the solid electrolyte battery standards (Q1 2026) and latest reports, sulfide-based solid electrolytes have reached an energy density of 510 Wh/kg in pilot production lines. The main challenges relate to:
-1. **Dendrite Formation:** Lithium metal interfaces still witness localized short-circuiting during rapid-charge phases (>3C rate).
-2. **Moisture Sensitivity:** Contact with ambient air creates toxic hydrogen sulfide (H₂S) gas, requiring specialized argon glovebox tooling for assembly.
-
-Current NIST and ISO safety standards outline class-4 hazardous protocols for handling these materials at grid-scale.`;
-
-    const words = responseTemplate.split(' ');
-    let currentText = '';
-
-    // Add initial placeholder message for assistant
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: 'assistant',
-        content: '',
-        isStreaming: true,
-        agents: ['Retrieval Agent', 'Research Agent (Tavily)', 'Critic Agent', 'Summary Agent'],
-        sources: [
-          { id: 's1', name: 'Sulfide-electrolyte-interfaces-2026.pdf', type: 'PDF', matchScore: '94%' },
-          { id: 's2', name: 'https://arxiv.org/abs/2603.09115', type: 'URL', matchScore: '89%' },
-        ],
-        suggestions: [
-          { id: 'sug1', question: 'How is H₂S outgassing mitigated in pilot lines?' },
-          { id: 'sug2', question: 'Compare sulfide-based and oxide-based electrolyte conductivity.' },
-          { id: 'sug3', question: 'What is the projected commercial launch date for these solid-state batteries?' }
-        ]
-      }
-    ]);
-
-    // Stream word by word
-    for (let i = 0; i < words.length; i++) {
-      currentText += (i === 0 ? '' : ' ') + words[i];
-      setMessages((prev) => {
-        const next = [...prev];
-        const last = next[next.length - 1];
-        if (last && last.role === 'assistant') {
-          last.content = currentText;
-        }
-        return next;
-      });
-      await new Promise(resolve => setTimeout(resolve, 60));
+    try {
+      await sendMessage(queryText.trim(), 'default');
+    } catch (err) {
+      console.error(err);
+    } finally {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
+      setActiveAgent('idle');
     }
-
-    // Done streaming
-    setMessages((prev) => {
-      const next = [...prev];
-      const last = next[next.length - 1];
-      if (last && last.role === 'assistant') {
-        last.isStreaming = false;
-      }
-      return next;
-    });
-
-    setActiveAgent('idle');
-    setIsProcessing(false);
   };
 
   const handleDocToggle = (docId: string) => {
