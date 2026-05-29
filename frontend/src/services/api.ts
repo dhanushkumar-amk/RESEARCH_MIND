@@ -66,4 +66,6 @@ export const apiClient = {
     request<T>(path, { ...options, method: 'GET' }),
   post: <T>(path: string, body?: RequestOptions['body'], options: Omit<RequestOptions, 'body'> = {}) =>
     request<T>(path, { ...options, method: 'POST', body }),
+  delete: <T>(path: string, options: Omit<RequestOptions, 'body'> = {}) =>
+    request<T>(path, { ...options, method: 'DELETE' }),
 };

@@ -240,7 +240,14 @@ class ExtractorService:
 
         try:
             # Try to fetch transcript in English, then fallback to other languages / auto-generated
-            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            if hasattr(YouTubeTranscriptApi, "list"):
+                try:
+                    transcript_list = YouTubeTranscriptApi().list(video_id)
+                except TypeError:
+                    transcript_list = YouTubeTranscriptApi.list(video_id)
+            else:
+                transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+                
             try:
                 transcript = transcript_list.find_transcript(['en'])
             except Exception:

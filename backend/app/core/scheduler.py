@@ -18,7 +18,7 @@ async def refresh_url_sources():
     for source in url_sources:
         source_id = source["_id"]
         user_id = source["user_id"]
-        url = source["s3_url"]
+        url = source.get("source_url") or source.get("s3_url")
         print(f"Scheduling recrawl for source: {source['filename']} (ID: {source_id})")
         await run_ingestion_pipeline(source_id=source_id, user_id=user_id, file_type="url", url=url)
 
@@ -34,7 +34,7 @@ async def refresh_youtube_sources():
     for source in yt_sources:
         source_id = source["_id"]
         user_id = source["user_id"]
-        url = source["s3_url"]
+        url = source.get("source_url") or source.get("s3_url")
         print(f"Scheduling refresh for YouTube source: {source['filename']} (ID: {source_id})")
         await run_ingestion_pipeline(source_id=source_id, user_id=user_id, file_type="youtube", url=url)
 

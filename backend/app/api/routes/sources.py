@@ -26,7 +26,7 @@ ALLOWED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".txt"}
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
-def _serialize_mongo_doc(doc: dict) -> dict:
+async def _serialize_mongo_doc(doc: dict) -> dict:
     """Helper to convert MongoDB object IDs to strings and generate S3 presigned URLs."""
     if not doc:
         return doc
@@ -39,6 +39,11 @@ def _serialize_mongo_doc(doc: dict) -> dict:
     s3_url = serialized.get("s3_url")
     if s3_url and s3_url.startswith("researchmind/"):
         serialized["s3_url"] = s3_service.generate_presigned_url(s3_url)
+    
+    # Fill in chunk_count if missing/None
+    if serialized.get("chunk_count") is None:
+        db = get_database()
+        serialized["chunk_count"] = await db.chunks.count_documents({"source_id": doc["_id"] if "_id" in doc else ObjectId(serialized["id"])})
     return serialized
 
 async def run_ingestion_pipeline(
@@ -68,13 +73,22 @@ async def run_ingestion_pipeline(
         )
 
     try:
+        # Load source document if needed to get source_url or metadata
+        source_doc = await db.sources.find_one({"_id": source_id})
+        if not source_doc:
+            raise ValueError(f"Source document {source_id} not found in database.")
+
         # --- Step 1: Extraction ---
         await update_status("extracting")
         
         pages = []
         if file_bytes:
             pages = extractor_service.extract_text(file_bytes, file_type)
-        elif url and file_type == "url":
+        elif file_type == "url":
+            if not url:
+                url = source_doc.get("source_url") or source_doc.get("s3_url")
+            if not url or url.startswith("researchmind/"):
+                raise ValueError("No valid URL found for recrawl/scraping.")
             text = extractor_service.extract_url(url)
             pages = [{"text": text, "page_number": 1}]
             # Upload raw scraped text to S3
@@ -82,7 +96,11 @@ async def run_ingestion_pipeline(
             await s3_service.upload_bytes(text.encode("utf-8"), s3_key, content_type="text/plain")
             # Update database to store S3 key path
             await db.sources.update_one({"_id": source_id}, {"$set": {"s3_url": s3_key}})
-        elif url and file_type == "youtube":
+        elif file_type == "youtube":
+            if not url:
+                url = source_doc.get("source_url") or source_doc.get("s3_url")
+            if not url or url.startswith("researchmind/"):
+                raise ValueError("No valid YouTube URL found for recrawl/scraping.")
             text = extractor_service.extract_youtube(url)
             pages = [{"text": text, "page_number": 1}]
             # Upload raw transcript text to S3
@@ -106,7 +124,6 @@ async def run_ingestion_pipeline(
 
         # --- Step 4: Indexing ---
         await update_status("indexing")
-        source_doc = await db.sources.find_one({"_id": source_id})
         source_metadata = {
             "filename": source_doc.get("filename", ""),
             "file_type": source_doc.get("file_type", "")
@@ -179,7 +196,7 @@ async def upload_document(
         file_type=file_ext.lstrip(".")
     )
 
-    return _serialize_mongo_doc(source_doc)
+    return await _serialize_mongo_doc(source_doc)
 
 
 @router.post("/ingest/url", response_model=SourceResponse, status_code=status.HTTP_201_CREATED)
@@ -214,6 +231,7 @@ async def ingest_url(
         "file_type": "url",
         "file_size": None,
         "s3_url": url,  # Temporarily store source URL; replaced with S3 key inside pipeline
+        "source_url": url,  # Keep the original source URL for recrawls
         "status": "uploaded",
         "error_reason": None,
         "created_at": now,
@@ -233,7 +251,7 @@ async def ingest_url(
         url=url
     )
 
-    return _serialize_mongo_doc(source_doc)
+    return await _serialize_mongo_doc(source_doc)
 
 
 @router.post("/ingest/youtube", response_model=SourceResponse, status_code=status.HTTP_201_CREATED)
@@ -263,6 +281,7 @@ async def ingest_youtube(
         "file_type": "youtube",
         "file_size": None,
         "s3_url": url,  # Temporarily store source URL; replaced with S3 key inside pipeline
+        "source_url": url,  # Keep the original source URL for refreshes
         "status": "uploaded",
         "error_reason": None,
         "created_at": now,
@@ -282,7 +301,7 @@ async def ingest_youtube(
         url=url
     )
 
-    return _serialize_mongo_doc(source_doc)
+    return await _serialize_mongo_doc(source_doc)
 
 
 @router.get("/sources", response_model=List[SourceResponse])
@@ -295,7 +314,7 @@ async def list_sources(
     db = get_database()
     cursor = db.sources.find({"user_id": str(current_user["_id"])})
     sources = await cursor.to_list(length=100)
-    return [_serialize_mongo_doc(src) for src in sources]
+    return [await _serialize_mongo_doc(src) for src in sources]
 
 
 @router.get("/sources/{source_id}/status", response_model=SourceResponse)
@@ -323,7 +342,7 @@ async def get_source_status(
             detail="Source not found."
         )
 
-    return _serialize_mongo_doc(source)
+    return await _serialize_mongo_doc(source)
 
 
 @router.delete("/sources/{source_id}", status_code=status.HTTP_200_OK)

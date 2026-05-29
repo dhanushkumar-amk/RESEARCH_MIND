@@ -8,8 +8,10 @@ class SourceDocument(BaseModel):
     filename: str
     file_type: str  # e.g., 'pdf', 'docx', 'xlsx', 'txt', 'url', 'youtube'
     file_size: Optional[int] = None  # None for URLs
-    s3_url: Optional[str] = None     # S3 URL if uploaded, or website URL
-    status: str  # 'uploaded', 'extracting', 'chunking', 'embedding', 'indexing', 'indexed', 'failed'
+    s3_url: Optional[str] = None
+    source_url: Optional[str] = None
+    chunk_count: Optional[int] = 0
+    status: str  # 'uploaded', 'extracting', ...
     error_reason: Optional[str] = None
     created_at: datetime
     updated_at: datetime

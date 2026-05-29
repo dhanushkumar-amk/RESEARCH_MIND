@@ -52,6 +52,10 @@ class VectorService:
 
         if chunk_documents:
             await self.db.chunks.insert_many(chunk_documents)
+            await self.db.sources.update_one(
+                {"_id": source_id},
+                {"$set": {"chunk_count": len(chunk_documents)}}
+            )
 
     async def delete_source_chunks(self, source_id: ObjectId) -> None:
         """

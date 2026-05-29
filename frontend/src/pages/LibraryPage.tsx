@@ -5,9 +5,10 @@ import {
   Upload, Globe, Search, BookOpen,
   Trash2, RefreshCw, FileText, CheckCircle2,
   Clock, AlertTriangle, Database, Info, Filter,
-  Layers, HardDrive, Plus, X
+  Layers, HardDrive, Plus, X, AlertCircle
 } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
+import { useDocuments } from '@/hooks/useDocuments';
 
 // Custom SVG Youtube icon to bypass lucide-react export discrepancy
 const YoutubeIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement> & { className?: string }) => (
@@ -43,15 +44,88 @@ const LibraryPage = () => {
   const [urlInput, setUrlInput] = useState('');
   const [youtubeInput, setYoutubeInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
 
-  // Initial mock documents
-  const [documents, setDocuments] = useState<DocumentItem[]>([
-    { id: '1', name: 'Sulfide-electrolyte-interfaces-2026.pdf', type: 'PDF', status: 'indexed', dateAdded: 'May 27, 2026', size: '4.2 MB', chunks: 124 },
-    { id: '2', name: 'NIST-SP-800-224-Draft.pdf', type: 'PDF', status: 'indexed', dateAdded: 'May 26, 2026', size: '12.8 MB', chunks: 382 },
-    { id: '3', name: 'Toyota Pilot Production Updates - Q1.docx', type: 'Word', status: 'indexed', dateAdded: 'May 25, 2026', size: '840 KB', chunks: 18 },
-    { id: '4', name: 'NIST PQ Cryptography Transition Standards', type: 'URL', status: 'indexed', dateAdded: 'May 24, 2026', size: 'Web Page', chunks: 42 },
-    { id: '5', name: 'https://youtube.com/watch?v=bB29a5Xz-M', type: 'YouTube', status: 'failed', dateAdded: 'May 23, 2026', size: '15m Video', chunks: 0 },
-  ]);
+  const {
+    documents: rawDocs,
+    isLoading,
+    error: apiError,
+    uploadDocument,
+    ingestUrl,
+    ingestYoutube,
+    deleteDocument,
+  } = useDocuments();
+
+  // Helper to format bytes
+  const formatBytes = (bytes: number, decimals = 1) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  };
+
+  // Map backend rawDocs to DocumentItem format for the table view
+  const documents: DocumentItem[] = rawDocs.map((doc) => {
+    let mappedType: 'PDF' | 'URL' | 'YouTube' | 'Word' = 'PDF';
+    const ext = doc.file_type.toLowerCase();
+    if (ext === 'url') {
+      mappedType = 'URL';
+    } else if (ext === 'youtube') {
+      mappedType = 'YouTube';
+    } else if (ext === 'docx' || ext === 'doc') {
+      mappedType = 'Word';
+    } else {
+      mappedType = 'PDF';
+    }
+
+    let mappedStatus: 'indexed' | 'processing' | 'failed' = 'indexed';
+    if (doc.status === 'indexed') {
+      mappedStatus = 'indexed';
+    } else if (doc.status === 'failed') {
+      mappedStatus = 'failed';
+    } else {
+      mappedStatus = 'processing';
+    }
+
+    let dateAdded = 'Unknown';
+    try {
+      const date = new Date(doc.created_at);
+      dateAdded = date.toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    } catch {
+      // fallback
+    }
+
+    let size = '—';
+    if (doc.file_size) {
+      size = formatBytes(doc.file_size);
+    } else if (mappedType === 'URL') {
+      size = 'Web Page';
+    } else if (mappedType === 'YouTube') {
+      size = 'Video Transcript';
+    }
+
+    return {
+      id: doc.id,
+      name: doc.filename,
+      type: mappedType,
+      status: mappedStatus,
+      dateAdded,
+      size,
+      chunks: doc.chunk_count || 0,
+      progress: doc.status === 'uploaded' ? 20
+              : doc.status === 'extracting' ? 40
+              : doc.status === 'chunking' ? 60
+              : doc.status === 'embedding' ? 80
+              : doc.status === 'indexing' ? 90
+              : 100,
+    };
+  });
 
   // Handle file drops
   const handleDragOver = (e: React.DragEvent) => {
@@ -63,20 +137,30 @@ const LibraryPage = () => {
     setIsDragging(false);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
+    setLocalError(null);
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const file = e.dataTransfer.files[0];
-      addNewMockDoc(file.name, file.size);
+      try {
+        await uploadDocument(file);
+      } catch (err: any) {
+        setLocalError(err?.message || 'Failed to upload file.');
+      }
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalError(null);
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
-      addNewMockDoc(file.name, formatBytes(file.size));
+      try {
+        await uploadDocument(file);
+      } catch (err: any) {
+        setLocalError(err?.message || 'Failed to upload file.');
+      }
     }
   };
 
@@ -85,98 +169,63 @@ const LibraryPage = () => {
     fileInputRef.current?.click();
   };
 
-  const formatBytes = (bytes: number, decimals = 1) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-  };
-
   // Handle URL ingestion
-  const handleUrlSubmit = (e: React.FormEvent) => {
+  const handleUrlSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!urlInput.trim()) return;
-    addNewMockDoc(urlInput, 'Web Page', 'URL');
-    setUrlInput('');
+    setLocalError(null);
+    try {
+      await ingestUrl(urlInput.trim());
+      setUrlInput('');
+    } catch (err: any) {
+      setLocalError(err?.message || 'Failed to ingest URL.');
+    }
   };
 
   // Handle YouTube ingestion
-  const handleYoutubeSubmit = (e: React.FormEvent) => {
+  const handleYoutubeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!youtubeInput.trim()) return;
-    addNewMockDoc(youtubeInput, 'Video Transcript', 'YouTube');
-    setYoutubeInput('');
-  };
-
-  const addNewMockDoc = (name: string, size: string, forceType?: 'PDF' | 'URL' | 'YouTube' | 'Word') => {
-    let docType: 'PDF' | 'URL' | 'YouTube' | 'Word' = 'PDF';
-    if (forceType) {
-      docType = forceType;
-    } else if (name.endsWith('.docx') || name.endsWith('.doc')) {
-      docType = 'Word';
+    setLocalError(null);
+    try {
+      await ingestYoutube(youtubeInput.trim());
+      setYoutubeInput('');
+    } catch (err: any) {
+      setLocalError(err?.message || 'Failed to ingest YouTube video.');
     }
-
-    const newId = (documents.length + 1).toString();
-    const newDoc: DocumentItem = {
-      id: newId,
-      name,
-      type: docType,
-      status: 'processing',
-      dateAdded: 'Today',
-      size: size,
-      chunks: 0,
-      progress: 10,
-    };
-
-    // Add to list
-    setDocuments(prev => [newDoc, ...prev]);
-
-    // Simulate ingestion progress bar increments
-    let progress = 10;
-    const interval = setInterval(() => {
-      progress += 15;
-      setDocuments(prev =>
-        prev.map(d => d.id === newId ? { ...d, progress: Math.min(progress, 100) } : d)
-      );
-
-      if (progress >= 100) {
-        clearInterval(interval);
-        setTimeout(() => {
-          setDocuments(prev =>
-            prev.map(d => d.id === newId ? { ...d, status: 'indexed', chunks: Math.floor(Math.random() * 80) + 10 } : d)
-          );
-        }, 500);
-      }
-    }, 600);
   };
 
-  const deleteDoc = (id: string) => {
-    setDocuments(prev => prev.filter(d => d.id !== id));
+  const deleteDoc = async (id: string) => {
+    setLocalError(null);
+    try {
+      await deleteDocument(id);
+    } catch (err: any) {
+      setLocalError(err?.message || 'Failed to delete document.');
+    }
   };
 
-  const reIngestDoc = (id: string) => {
-    setDocuments(prev =>
-      prev.map(d => d.id === id ? { ...d, status: 'processing', progress: 0 } : d)
-    );
-
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 20;
-      setDocuments(prev =>
-        prev.map(d => d.id === id ? { ...d, progress: Math.min(progress, 100) } : d)
-      );
-
-      if (progress >= 100) {
-        clearInterval(interval);
-        setTimeout(() => {
-          setDocuments(prev =>
-            prev.map(d => d.id === id ? { ...d, status: 'indexed', chunks: Math.floor(Math.random() * 80) + 15 } : d)
-          );
-        }, 500);
+  const reIngestDoc = async (doc: DocumentItem) => {
+    setLocalError(null);
+    const originalDoc = rawDocs.find(d => d.id === doc.id);
+    if (!originalDoc) return;
+    
+    if (doc.type === 'URL') {
+      const url = originalDoc.source_url || originalDoc.s3_url || doc.name;
+      try {
+        await ingestUrl(url);
+      } catch (err: any) {
+        setLocalError(err?.message || 'Failed to re-ingest URL.');
       }
-    }, 500);
+    } else if (doc.type === 'YouTube') {
+      const url = originalDoc.source_url || originalDoc.s3_url || doc.name;
+      try {
+        await ingestYoutube(url);
+      } catch (err: any) {
+        setLocalError(err?.message || 'Failed to re-ingest YouTube video.');
+      }
+    } else {
+      setLocalError('For files, please delete and upload the file again.');
+    }
   };
 
   // Filter logic
@@ -187,9 +236,10 @@ const LibraryPage = () => {
     return matchesSearch && matchesType && matchesStatus;
   });
 
-  // Calculate live S3 Storage metrics
-  const totalStorageMB = 28.5; // sum of MBs
-  const storagePct = (totalStorageMB / 100) * 100; // E.g., limit of 100MB
+  // Calculate live S3 Storage metrics based on actual documents
+  const totalStorageBytes = rawDocs.reduce((acc, doc) => acc + (doc.file_size || 0), 0);
+  const totalStorageMB = parseFloat((totalStorageBytes / (1024 * 1024)).toFixed(2)) || 0.0;
+  const storagePct = Math.min((totalStorageMB / 100) * 100, 100); // 100MB Limit
 
   return (
     <AppShell>
@@ -204,6 +254,14 @@ const LibraryPage = () => {
             Ingest PDFs, websites, Word documents, and YouTube videos into your unified vector space.
           </p>
         </div>
+
+        {/* API Error / Local Error Alert */}
+        {(apiError || localError) && (
+          <div className="p-4 rounded-xl bg-red-50 border border-red-100 text-xs font-semibold text-red-700 flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+            <span>{apiError || localError}</span>
+          </div>
+        )}
 
         {/* Input grids: Upload Drag-Drop, URL, YouTube & S3 Usage */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -458,7 +516,7 @@ const LibraryPage = () => {
 
                         {/* Re-ingest */}
                         <button
-                          onClick={() => reIngestDoc(doc.id)}
+                          onClick={() => reIngestDoc(doc)}
                           disabled={doc.status === 'processing'}
                           className="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded transition-colors disabled:opacity-50"
                           title="Re-ingest Document"

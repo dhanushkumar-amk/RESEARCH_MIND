@@ -9,6 +9,8 @@ class SourceResponse(BaseModel):
     file_type: str
     file_size: Optional[int] = None
     s3_url: Optional[str] = None
+    source_url: Optional[str] = None
+    chunk_count: Optional[int] = 0
     status: str
     error_reason: Optional[str] = None
     created_at: datetime
