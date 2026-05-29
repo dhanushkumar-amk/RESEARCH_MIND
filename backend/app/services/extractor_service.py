@@ -1,66 +1,75 @@
 import io
+import time
 import pdfplumber
 import PyPDF2
 from docx import Document
 import openpyxl
 from fastapi import HTTPException
+import httpx
 
 class ExtractorService:
-    def extract_text(self, file_bytes: bytes, file_type: str) -> str:
+    def extract_text(self, file_bytes: bytes, file_type: str) -> list[dict]:
         """
         Main entry point for document extraction.
         Routes to the correct extractor based on file type.
+        Returns a list of dicts: [{"text": str, "page_number": int}]
         """
         file_type = file_type.lower().strip(".")
         
         if file_type == "pdf":
             return self.extract_pdf(file_bytes)
         elif file_type == "docx":
-            return self.extract_docx(file_bytes)
+            return [{"text": self.extract_docx(file_bytes), "page_number": 1}]
         elif file_type == "xlsx":
-            return self.extract_xlsx(file_bytes)
+            return [{"text": self.extract_xlsx(file_bytes), "page_number": 1}]
         elif file_type in {"txt", "text"}:
-            return self.extract_txt(file_bytes)
+            return [{"text": self.extract_txt(file_bytes), "page_number": 1}]
         else:
             raise HTTPException(
                 status_code=400,
                 detail=f"Unsupported file type for text extraction: {file_type}"
             )
 
-    def extract_pdf(self, file_bytes: bytes) -> str:
+    def extract_pdf(self, file_bytes: bytes) -> list[dict]:
         """
         Step 2: PDF extraction using pdfplumber with PyPDF2 as a fallback.
+        Preserves individual page numbers.
         """
-        text = ""
+        pages = []
         # Try pdfplumber first (better formatting)
         try:
             with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
-                for page in pdf.pages:
+                for i, page in enumerate(pdf.pages):
                     page_text = page.extract_text()
-                    if page_text:
-                        text += page_text + "\n"
+                    if page_text and page_text.strip():
+                        pages.append({
+                            "text": page_text.strip(),
+                            "page_number": i + 1
+                        })
         except Exception as e:
             print(f"pdfplumber failed: {e}. Trying fallback PyPDF2...")
-            # Fallback to PyPDF2
+            pages = []
             try:
                 reader = PyPDF2.PdfReader(io.BytesIO(file_bytes))
-                for page in reader.pages:
+                for i, page in enumerate(reader.pages):
                     page_text = page.extract_text()
-                    if page_text:
-                        text += page_text + "\n"
+                    if page_text and page_text.strip():
+                        pages.append({
+                            "text": page_text.strip(),
+                            "page_number": i + 1
+                        })
             except Exception as fe:
                 raise HTTPException(
                     status_code=500,
                     detail=f"Failed to extract text from PDF: {str(fe)}"
                 )
 
-        clean_text = text.strip()
-        if not clean_text:
+        if not pages:
             raise HTTPException(
                 status_code=400,
                 detail="PDF appears to be empty or contains only scanned images (no selectable text)."
             )
-        return clean_text
+        return pages
 
     def extract_docx(self, file_bytes: bytes) -> str:
         """
@@ -136,13 +145,31 @@ class ExtractorService:
             detail="Failed to decode text file. Ensure it is encoded in UTF-8 or standard ASCII."
         )
 
+    def _get_with_retry(self, url: str, headers: dict = None, retries: int = 3, backoff: int = 2) -> httpx.Response:
+        """
+        Helper method to execute HTTP requests with exponential backoff retries.
+        """
+        sleep_time = backoff
+        for attempt in range(retries):
+            try:
+                with httpx.Client(timeout=10.0, follow_redirects=True) as client:
+                    response = client.get(url, headers=headers)
+                    response.raise_for_status()
+                    return response
+            except (httpx.HTTPStatusError, httpx.RequestError) as e:
+                if attempt == retries - 1:
+                    raise e
+            print(f"HTTP request failed for {url}. Retrying in {sleep_time}s... (Attempt {attempt+1}/{retries})")
+            time.sleep(sleep_time)
+            sleep_time *= 2
+
     def extract_url(self, url: str) -> str:
         """
         Step 4: Web HTML scraping using trafilatura with BeautifulSoup as a fallback.
+        Includes retry logic for production stability.
         """
         import trafilatura
         from bs4 import BeautifulSoup
-        import httpx
 
         # Try trafilatura first (advanced content extraction, strips ads/navigation)
         try:
@@ -154,13 +181,10 @@ class ExtractorService:
         except Exception as e:
             print(f"trafilatura scraping failed for {url}: {e}. Trying BeautifulSoup fallback...")
 
-        # Fallback to standard HTTP request + BeautifulSoup
+        # Fallback with retry logic
         try:
-            with httpx.Client(timeout=10.0, follow_redirects=True) as client:
-                response = client.get(url, headers={
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-                })
-                response.raise_for_status()
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+            response = self._get_with_retry(url, headers=headers)
                 
             soup = BeautifulSoup(response.text, "html.parser")
             
@@ -235,5 +259,3 @@ class ExtractorService:
                 status_code=400,
                 detail=f"Failed to fetch YouTube transcript. Ensure subtitles are enabled for this video. Details: {str(e)}"
             )
-
-

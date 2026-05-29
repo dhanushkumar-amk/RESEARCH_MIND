@@ -14,6 +14,10 @@ async def connect_to_mongo() -> None:
     client = AsyncIOMotorClient(settings.mongodb_uri)
     database = client[settings.resolved_mongodb_database]
 
+    # Ensure chunks collection exists for Vector Search index creation
+    if "chunks" not in await database.list_collection_names():
+        await database.create_collection("chunks")
+
     await database.users.create_index([("email", ASCENDING)], unique=True)
     await database.email_verifications.create_index("expires_at", expireAfterSeconds=0)
     await database.email_verifications.create_index([("email", ASCENDING)])

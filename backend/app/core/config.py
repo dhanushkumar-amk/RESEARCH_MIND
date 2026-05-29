@@ -87,6 +87,8 @@ class Settings(BaseSettings):
     aws_secret_access_key: str | None = Field(default=None, validation_alias=AliasChoices("AWS_SECRET_ACCESS_KEY"))
     aws_s3_bucket: str | None = Field(default=None, validation_alias=AliasChoices("AWS_S3_BUCKET"))
     aws_region: str = Field(default="us-east-1", validation_alias=AliasChoices("AWS_REGION"))
+    hf_token: str | None = Field(default=None, validation_alias=AliasChoices("HF_TOKEN"))
+
 
 
 

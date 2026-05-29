@@ -34,13 +34,11 @@ class ChunkerService:
         # Fallback approximation (words * 1.3)
         return len(text.split())
 
-    def split_text(self, text: str, chunk_size: int = 512, chunk_overlap: int = 50) -> list[dict]:
+    def split_text(self, pages: list[dict], chunk_size: int = 512, chunk_overlap: int = 50) -> list[dict]:
         """
-        Splits plaintext into semantic chunks using RecursiveCharacterTextSplitter
-        and calculates token counts.
+        Splits plaintext pages into semantic chunks while preserving their page numbers.
         """
-        cleaned = self.clean_text(text)
-        if not cleaned:
+        if not pages:
             return []
 
         splitter = RecursiveCharacterTextSplitter(
@@ -49,14 +47,25 @@ class ChunkerService:
             length_function=self.get_token_count
         )
 
-        raw_chunks = splitter.split_text(cleaned)
-        
-        chunks = []
-        for i, chunk_text in enumerate(raw_chunks):
-            chunks.append({
-                "text": chunk_text,
-                "token_count": self.get_token_count(chunk_text),
-                "chunk_index": i
-            })
+        all_chunks = []
+        overall_index = 0
+
+        for page in pages:
+            page_text = page.get("text", "")
+            page_num = page.get("page_number", 1)
             
-        return chunks
+            cleaned_text = self.clean_text(page_text)
+            if not cleaned_text:
+                continue
+
+            raw_chunks = splitter.split_text(cleaned_text)
+            for chunk_text in raw_chunks:
+                all_chunks.append({
+                    "text": chunk_text,
+                    "token_count": self.get_token_count(chunk_text),
+                    "chunk_index": overall_index,
+                    "page_number": page_num
+                })
+                overall_index += 1
+            
+        return all_chunks

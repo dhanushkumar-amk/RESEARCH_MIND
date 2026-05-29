@@ -12,9 +12,16 @@ class VectorService:
         return get_database()
 
 
-    async def save_chunks(self, source_id: ObjectId, user_id: str, chunks: list[dict], embeddings: list[list[float]]) -> None:
+    async def save_chunks(
+        self,
+        source_id: ObjectId,
+        user_id: str,
+        chunks: list[dict],
+        embeddings: list[list[float]],
+        source_metadata: dict = None
+    ) -> None:
         """
-        Saves chunks and their corresponding embeddings to the 'chunks' collection in MongoDB.
+        Saves chunks, their page numbers, embeddings, and metadata to MongoDB chunks collection.
         """
         if not chunks or not embeddings:
             return
@@ -23,13 +30,22 @@ class VectorService:
         chunk_documents = []
 
         for i, chunk in enumerate(chunks):
+            # Combine generic source metadata with chunk-specific metadata
+            chunk_metadata = {
+                "user_id": user_id,
+                "source_id": str(source_id),
+                **(source_metadata or {})
+            }
+            
             chunk_doc = {
                 "source_id": source_id,
                 "user_id": user_id,
                 "text": chunk["text"],
                 "embedding": embeddings[i],
                 "chunk_index": chunk["chunk_index"],
+                "page_number": chunk.get("page_number", 1),
                 "token_count": chunk["token_count"],
+                "metadata": chunk_metadata,
                 "created_at": now
             }
             chunk_documents.append(chunk_doc)
@@ -70,6 +86,8 @@ class VectorService:
                     "source_id": {"$toString": "$source_id"},
                     "text": 1,
                     "chunk_index": 1,
+                    "page_number": 1,
+                    "metadata": 1,
                     "score": {"$meta": "searchScore"}
                 }
             }
@@ -80,6 +98,5 @@ class VectorService:
             results = await cursor.to_list(length=limit)
             return results
         except Exception as e:
-            # Fallback or log if index is not yet created in MongoDB Atlas
             print(f"Error performing Atlas Vector Search: {e}")
             return []

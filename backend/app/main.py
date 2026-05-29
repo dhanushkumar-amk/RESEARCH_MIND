@@ -12,13 +12,17 @@ from app.api.routes.auth import router as auth_router
 from app.api.routes.sources import router as sources_router
 from app.core.config import settings
 from app.core.database import close_mongo_connection, connect_to_mongo
+from app.core.scheduler import start_scheduler, shutdown_scheduler
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await connect_to_mongo()
+    start_scheduler()
     yield
+    shutdown_scheduler()
     await close_mongo_connection()
+
 
 app = FastAPI(
     title=settings.app_name,
