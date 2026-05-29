@@ -153,3 +153,42 @@ class VectorService:
 
         scored_chunks.sort(key=lambda x: x["score"], reverse=True)
         return scored_chunks[:limit]
+
+    def reciprocal_rank_fusion(
+        self,
+        vector_results: list[dict],
+        bm25_results: list[dict],
+        k: int = 60,
+        limit: int = 20
+    ) -> list[dict]:
+        """
+        Combines semantic vector results and BM25 keyword results using Reciprocal Rank Fusion (RRF).
+        """
+        rrf_scores = {}
+        # Keep track of chunk properties by ID
+        chunks_by_id = {}
+
+        # Process vector search results
+        for rank, chunk in enumerate(vector_results):
+            chunk_id = chunk["id"]
+            chunks_by_id[chunk_id] = chunk
+            rrf_scores[chunk_id] = rrf_scores.get(chunk_id, 0.0) + (1.0 / (k + (rank + 1)))
+
+        # Process BM25 search results
+        for rank, chunk in enumerate(bm25_results):
+            chunk_id = chunk["id"]
+            chunks_by_id[chunk_id] = chunk
+            rrf_scores[chunk_id] = rrf_scores.get(chunk_id, 0.0) + (1.0 / (k + (rank + 1)))
+
+        # Sort chunks based on RRF scores in descending order
+        sorted_chunk_ids = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
+
+        # Construct final fused results list
+        fused_results = []
+        for chunk_id, score in sorted_chunk_ids[:limit]:
+            chunk = chunks_by_id[chunk_id]
+            fused_chunk = dict(chunk)
+            fused_chunk["rrf_score"] = score
+            fused_results.append(fused_chunk)
+
+        return fused_results

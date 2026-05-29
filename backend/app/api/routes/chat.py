@@ -47,27 +47,27 @@ async def chat(
     )
     print(f"Step 3 Complete: Found {len(keyword_chunks)} keyword chunks via BM25.")
 
+    # Step 4: Hybrid Search (RRF Merge)
+    hybrid_chunks = vector_service.reciprocal_rank_fusion(
+        vector_results=semantic_chunks,
+        bm25_results=keyword_chunks,
+        limit=20
+    )
+    print(f"Step 4 Complete: Fused semantic and keyword results into {len(hybrid_chunks)} hybrid chunks using RRF.")
+
     return {
         "query": query_text,
         "vector_length": len(query_vector),
         "semantic_chunks_count": len(semantic_chunks),
-        "semantic_chunks": [
-            {
-                "text": chunk["text"],
-                "score": chunk.get("score", 0.0),
-                "page_number": chunk.get("page_number", 1),
-                "filename": chunk.get("metadata", {}).get("filename", "Unknown")
-            }
-            for chunk in semantic_chunks
-        ],
         "keyword_chunks_count": len(keyword_chunks),
-        "keyword_chunks": [
+        "hybrid_chunks_count": len(hybrid_chunks),
+        "hybrid_chunks": [
             {
                 "text": chunk["text"],
-                "score": chunk.get("score", 0.0),
+                "rrf_score": chunk.get("rrf_score", 0.0),
                 "page_number": chunk.get("page_number", 1),
                 "filename": chunk.get("metadata", {}).get("filename", "Unknown")
             }
-            for chunk in keyword_chunks
+            for chunk in hybrid_chunks
         ]
     }
