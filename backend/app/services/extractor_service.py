@@ -255,7 +255,17 @@ class ExtractorService:
                 transcript = next(iter(transcript_list))
                 
             data = transcript.fetch()
-            text_pieces = [entry["text"] for entry in data]
+            text_pieces = []
+            for entry in data:
+                if hasattr(entry, "text"):
+                    text_pieces.append(entry.text)
+                elif isinstance(entry, dict) and "text" in entry:
+                    text_pieces.append(entry["text"])
+                else:
+                    try:
+                        text_pieces.append(entry.get("text", ""))
+                    except Exception:
+                        text_pieces.append(str(entry))
             clean_text = " ".join(text_pieces).strip()
             
             if not clean_text:
