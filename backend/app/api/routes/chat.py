@@ -55,19 +55,90 @@ async def chat(
     )
     print(f"Step 4 Complete: Fused semantic and keyword results into {len(hybrid_chunks)} hybrid chunks using RRF.")
 
+def reorder_context_chunks(chunks: list[dict]) -> list[dict]:
+    """
+    Reorders chunks to mitigate the 'lost in the middle' phenomenon.
+    Places the most relevant chunks at the beginning, end, and middle.
+    """
+    n = len(chunks)
+    if n <= 2:
+        return chunks
+    
+    # Pre-defined mapping for n=3, 4, 5
+    reorder_map = {
+        3: [1, 0, 2],
+        4: [1, 3, 0, 2],
+        5: [1, 3, 0, 4, 2]
+    }
+    
+    if n in reorder_map:
+        return [chunks[i] for i in reorder_map[n]]
+        
+    return chunks
+
+def build_context_with_budget(chunks: list[dict], max_tokens: int = 4000) -> tuple[str, list[dict]]:
+    """
+    Assembles context from chunks, enforcing a strict token budget using tiktoken.
+    Returns the context string and the list of chunks actually included.
+    """
+    import tiktoken
+    try:
+        encoding = tiktoken.get_encoding("cl100k_base")
+    except Exception:
+        encoding = tiktoken.encoding_for_model("gpt-4")
+
+    # First, reorder chunks to handle lost-in-the-middle
+    ordered_chunks = reorder_context_chunks(chunks)
+
+    included_chunks = []
+    current_tokens = 0
+    context_parts = []
+
+    for chunk in ordered_chunks:
+        filename = chunk.get("metadata", {}).get("filename", "Unknown")
+        page_num = chunk.get("page_number", 1)
+        formatted_chunk = f"[Source: {filename}, Page: {page_num}]\n{chunk['text']}\n\n"
+        
+        chunk_tokens = len(encoding.encode(formatted_chunk))
+        if current_tokens + chunk_tokens <= max_tokens:
+            context_parts.append(formatted_chunk)
+            current_tokens += chunk_tokens
+            included_chunks.append(chunk)
+        else:
+            break
+
+    context_string = "".join(context_parts).strip()
+    return context_string, included_chunks
+
+# Step 5: Cross-Encoder Reranking
+    reranked_chunks = embedding_service.rerank_chunks(
+        query=query_text,
+        chunks=hybrid_chunks,
+        limit=5
+    )
+    print(f"Step 5 Complete: Reranked and selected top {len(reranked_chunks)} chunks using Cross-Encoder.")
+
+    # Step 6: Context Building & Token Budget
+    context, context_chunks = build_context_with_budget(reranked_chunks, max_tokens=4000)
+    print(f"Step 6 Complete: Built context of size {len(context)} chars with {len(context_chunks)} chunks.")
+
     return {
         "query": query_text,
         "vector_length": len(query_vector),
         "semantic_chunks_count": len(semantic_chunks),
         "keyword_chunks_count": len(keyword_chunks),
         "hybrid_chunks_count": len(hybrid_chunks),
-        "hybrid_chunks": [
+        "reranked_chunks_count": len(reranked_chunks),
+        "context_chunks_count": len(context_chunks),
+        "context": context,
+        "context_chunks": [
             {
                 "text": chunk["text"],
                 "rrf_score": chunk.get("rrf_score", 0.0),
+                "rerank_score": chunk.get("rerank_score", 0.0),
                 "page_number": chunk.get("page_number", 1),
                 "filename": chunk.get("metadata", {}).get("filename", "Unknown")
             }
-            for chunk in hybrid_chunks
+            for chunk in context_chunks
         ]
     }
