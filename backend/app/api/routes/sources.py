@@ -133,6 +133,14 @@ async def run_ingestion_pipeline(
         # --- Done ---
         await update_status("indexed")
         print(f"Successfully processed and indexed source {source_id} for user {user_id}")
+        
+        # Refresh the BM25 index with the newly added chunks
+        try:
+            from app.api.routes.chat import init_bm25_retriever
+            await init_bm25_retriever()
+        except Exception as e:
+            print(f"[RAG Pipeline] Error refreshing BM25 retriever cache on ingestion: {e}")
+
 
     except Exception as e:
         error_msg = str(e)
@@ -378,4 +386,12 @@ async def delete_source(
     await vector_service.delete_source_chunks(ObjectId(source_id))
 
     await db.sources.delete_one({"_id": ObjectId(source_id)})
+    
+    # Refresh the BM25 index after chunks are deleted
+    try:
+        from app.api.routes.chat import init_bm25_retriever
+        await init_bm25_retriever()
+    except Exception as e:
+        print(f"[RAG Pipeline] Error refreshing BM25 retriever cache on deletion: {e}")
+        
     return {"message": "Source deleted successfully."}

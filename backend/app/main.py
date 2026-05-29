@@ -10,7 +10,7 @@ import time
 
 from app.api.routes.auth import router as auth_router
 from app.api.routes.sources import router as sources_router
-from app.api.routes.chat import router as chat_router
+from app.api.routes.chat import router as chat_router, init_bm25_retriever
 from app.core.config import settings
 from app.core.database import close_mongo_connection, connect_to_mongo
 from app.core.scheduler import start_scheduler, shutdown_scheduler
@@ -20,6 +20,8 @@ from app.core.scheduler import start_scheduler, shutdown_scheduler
 async def lifespan(_: FastAPI):
     await connect_to_mongo()
     start_scheduler()
+    # Pre-fetch chunks and initialize BM25 index on startup
+    await init_bm25_retriever()
     yield
     shutdown_scheduler()
     await close_mongo_connection()
