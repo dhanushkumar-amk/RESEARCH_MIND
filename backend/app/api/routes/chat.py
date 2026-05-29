@@ -37,8 +37,15 @@ async def chat(
         user_id=user_id,
         limit=20
     )
-    
     print(f"Step 2 Complete: Found {len(semantic_chunks)} semantic chunks in MongoDB Atlas.")
+
+    # Step 3: BM25 Keyword Search
+    keyword_chunks = await vector_service.search_bm25_chunks(
+        query_text=query_text,
+        user_id=user_id,
+        limit=20
+    )
+    print(f"Step 3 Complete: Found {len(keyword_chunks)} keyword chunks via BM25.")
 
     return {
         "query": query_text,
@@ -52,5 +59,15 @@ async def chat(
                 "filename": chunk.get("metadata", {}).get("filename", "Unknown")
             }
             for chunk in semantic_chunks
+        ],
+        "keyword_chunks_count": len(keyword_chunks),
+        "keyword_chunks": [
+            {
+                "text": chunk["text"],
+                "score": chunk.get("score", 0.0),
+                "page_number": chunk.get("page_number", 1),
+                "filename": chunk.get("metadata", {}).get("filename", "Unknown")
+            }
+            for chunk in keyword_chunks
         ]
     }
