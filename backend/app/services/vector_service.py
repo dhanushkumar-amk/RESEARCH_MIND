@@ -104,3 +104,52 @@ class VectorService:
         except Exception as e:
             print(f"Error performing Atlas Vector Search: {e}")
             return []
+
+    async def search_bm25_chunks(self, query_text: str, user_id: str, limit: int = 20) -> list[dict]:
+        """
+        Performs local BM25 keyword search on all the user's indexed chunks.
+        """
+        import re
+        from rank_bm25 import BM25Okapi
+
+        # 1. Fetch all chunks belonging to this user
+        cursor = self.db.chunks.find(
+            {"user_id": user_id},
+            {"_id": 1, "text": 1, "chunk_index": 1, "page_number": 1, "metadata": 1}
+        )
+        all_chunks = await cursor.to_list(length=10000)
+        if not all_chunks:
+            return []
+
+        # 2. Tokenize documents
+        def tokenize(text: str) -> list[str]:
+            return re.findall(r'\w+', text.lower())
+
+        tokenized_corpus = [tokenize(c["text"]) for c in all_chunks]
+        
+        # 3. Initialize BM25 and score query
+        try:
+            bm25 = BM25Okapi(tokenized_corpus)
+            tokenized_query = tokenize(query_text)
+            scores = bm25.get_scores(tokenized_query)
+        except Exception as e:
+            print(f"Error calculating BM25: {e}")
+            return []
+
+        # 4. Rank and sort chunks
+        scored_chunks = []
+        for idx, score in enumerate(scores):
+            if score > 0:
+                chunk = all_chunks[idx]
+                scored_chunks.append({
+                    "id": str(chunk["_id"]),
+                    "source_id": str(chunk.get("source_id", "")),
+                    "text": chunk["text"],
+                    "chunk_index": chunk.get("chunk_index", 0),
+                    "page_number": chunk.get("page_number", 1),
+                    "metadata": chunk.get("metadata", {}),
+                    "score": float(score)
+                })
+
+        scored_chunks.sort(key=lambda x: x["score"], reverse=True)
+        return scored_chunks[:limit]
