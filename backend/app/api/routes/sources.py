@@ -1,24 +1,21 @@
 from datetime import datetime, timezone
-import uuid
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, BackgroundTasks
 from bson import ObjectId
 from typing import List
+from urllib.parse import urlparse
 
 from app.dependencies.auth import get_current_user
 from app.core.database import get_database
 from app.services.s3_service import S3Service
 from app.services.vector_service import VectorService
 from app.schemas.sources import SourceResponse, UrlIngestRequest, YoutubeIngestRequest
-from urllib.parse import urlparse
-
-router = APIRouter(prefix="", tags=["Sources"])
-s3_service = S3Service()
-vector_service = VectorService()
-
 from app.services.extractor_service import ExtractorService
 from app.services.chunker_service import ChunkerService
 from app.services.embedding_service import EmbeddingService
 
+router = APIRouter(prefix="", tags=["Sources"])
+s3_service = S3Service()
+vector_service = VectorService()
 extractor_service = ExtractorService()
 chunker_service = ChunkerService()
 embedding_service = EmbeddingService()
@@ -30,11 +27,19 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 def _serialize_mongo_doc(doc: dict) -> dict:
-    """Helper to convert MongoDB object IDs to strings."""
-    if doc and "_id" in doc:
-        doc["id"] = str(doc["_id"])
-        del doc["_id"]
-    return doc
+    """Helper to convert MongoDB object IDs to strings and generate S3 presigned URLs."""
+    if not doc:
+        return doc
+    # Deep copy or modify in place
+    serialized = dict(doc)
+    if "_id" in serialized:
+        serialized["id"] = str(serialized["_id"])
+        del serialized["_id"]
+    # If S3 key is stored, generate a temporary presigned URL for secure access
+    s3_url = serialized.get("s3_url")
+    if s3_url and s3_url.startswith("researchmind/"):
+        serialized["s3_url"] = s3_service.generate_presigned_url(s3_url)
+    return serialized
 
 async def run_ingestion_pipeline(
     source_id: ObjectId,
@@ -44,11 +49,11 @@ async def run_ingestion_pipeline(
     url: str = None
 ):
     """
-    Asynchronous ETL pipeline:
-    1. Extract (parse document/URL/YouTube text)
-    2. Chunk (clean and split text semantically)
-    3. Embed (generate 384d vector embeddings)
-    4. Index (store chunks + vectors in MongoDB)
+    Production-grade ETL Ingestion Pipeline:
+    1. Extract (yields page-level [{"text": str, "page_number": int}])
+    2. Chunk (splits text per page semantically)
+    3. Embed (batch processed on CPU in 384 dimensions)
+    4. Index (inserts into MongoDB vector chunks collection)
     """
     db = get_database()
     
@@ -66,19 +71,31 @@ async def run_ingestion_pipeline(
         # --- Step 1: Extraction ---
         await update_status("extracting")
         
-        extracted_text = ""
+        pages = []
         if file_bytes:
-            extracted_text = extractor_service.extract_text(file_bytes, file_type)
+            pages = extractor_service.extract_text(file_bytes, file_type)
         elif url and file_type == "url":
-            extracted_text = extractor_service.extract_url(url)
+            text = extractor_service.extract_url(url)
+            pages = [{"text": text, "page_number": 1}]
+            # Upload raw scraped text to S3
+            s3_key = f"researchmind/{user_id}/scraped/{source_id}.txt"
+            await s3_service.upload_bytes(text.encode("utf-8"), s3_key, content_type="text/plain")
+            # Update database to store S3 key path
+            await db.sources.update_one({"_id": source_id}, {"$set": {"s3_url": s3_key}})
         elif url and file_type == "youtube":
-            extracted_text = extractor_service.extract_youtube(url)
+            text = extractor_service.extract_youtube(url)
+            pages = [{"text": text, "page_number": 1}]
+            # Upload raw transcript text to S3
+            s3_key = f"researchmind/{user_id}/transcripts/{source_id}.txt"
+            await s3_service.upload_bytes(text.encode("utf-8"), s3_key, content_type="text/plain")
+            # Update database to store S3 key path
+            await db.sources.update_one({"_id": source_id}, {"$set": {"s3_url": s3_key}})
         else:
-            raise ValueError("No valid ingestion source input (bytes or URL) was provided.")
+            raise ValueError("No valid ingestion source input was provided.")
 
         # --- Step 2: Chunking ---
         await update_status("chunking")
-        chunks = chunker_service.split_text(extracted_text)
+        chunks = chunker_service.split_text(pages)
         if not chunks:
             raise ValueError("No text chunks could be extracted from this source.")
 
@@ -89,7 +106,12 @@ async def run_ingestion_pipeline(
 
         # --- Step 4: Indexing ---
         await update_status("indexing")
-        await vector_service.save_chunks(source_id, user_id, chunks, embeddings)
+        source_doc = await db.sources.find_one({"_id": source_id})
+        source_metadata = {
+            "filename": source_doc.get("filename", ""),
+            "file_type": source_doc.get("file_type", "")
+        }
+        await vector_service.save_chunks(source_id, user_id, chunks, embeddings, source_metadata)
 
         # --- Done ---
         await update_status("indexed")
@@ -108,10 +130,9 @@ async def upload_document(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Step 1: Upload document to storage (S3 or local mock) and store metadata in MongoDB.
-    Validates that the file type is PDF, Word, Excel, or TXT.
+    Step 1: Upload document to S3/local storage and store metadata in MongoDB.
+    Validates file type.
     """
-    # 1. Type validation
     filename = file.filename
     file_ext = "." + filename.split(".")[-1].lower() if "." in filename else ""
     if file_ext not in ALLOWED_EXTENSIONS:
@@ -120,18 +141,18 @@ async def upload_document(
             detail=f"Unsupported file type. Allowed types: {', '.join(ALLOWED_EXTENSIONS)}"
         )
 
-    # 2. Generate unique storage key and metadata
     user_id = str(current_user["_id"])
     source_id = ObjectId()
-    s3_key = f"{user_id}/{source_id}{file_ext}"
+    # Mirror structure: researchmind/{user_id}/documents/{file_id}
+    s3_key = f"researchmind/{user_id}/documents/{source_id}{file_ext}"
 
-    # Read bytes before we upload, so we can pass them to the background task
+    # Read bytes for background task before S3 upload closes stream
     file_bytes = await file.read()
 
-    # 3. Upload to S3 / Local Storage
+    # Upload to S3 (returns s3_key)
     s3_url = await s3_service.upload_file(file, s3_key)
 
-    # 4. Save metadata to MongoDB
+    # Save metadata to MongoDB
     now = _utcnow()
     source_doc = {
         "_id": source_id,
@@ -149,7 +170,7 @@ async def upload_document(
     db = get_database()
     await db.sources.insert_one(source_doc)
 
-    # Trigger background ingestion pipeline
+    # Trigger background ETL
     background_tasks.add_task(
         run_ingestion_pipeline,
         source_id=source_id,
@@ -168,7 +189,7 @@ async def ingest_url(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Step 4: URL scraping trigger. Validates the URL format and saves metadata.
+    Step 4: URL scraping trigger.
     """
     url = payload.url.strip()
     parsed = urlparse(url)
@@ -182,7 +203,6 @@ async def ingest_url(
     source_id = ObjectId()
     now = _utcnow()
 
-    # Use the domain/path as the filename
     filename = parsed.netloc + parsed.path
     if filename.endswith("/"):
         filename = filename[:-1]
@@ -193,7 +213,7 @@ async def ingest_url(
         "filename": filename or url,
         "file_type": "url",
         "file_size": None,
-        "s3_url": url,  # For URLs, s3_url stores the source web URL
+        "s3_url": url,  # Temporarily store source URL; replaced with S3 key inside pipeline
         "status": "uploaded",
         "error_reason": None,
         "created_at": now,
@@ -203,7 +223,7 @@ async def ingest_url(
     db = get_database()
     await db.sources.insert_one(source_doc)
 
-    # Trigger background ingestion pipeline
+    # Trigger background ETL
     background_tasks.add_task(
         run_ingestion_pipeline,
         source_id=source_id,
@@ -223,7 +243,7 @@ async def ingest_youtube(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Step 5: YouTube trigger. Validates YouTube URL and saves metadata.
+    Step 5: YouTube trigger.
     """
     url = payload.url.strip()
     if "youtube.com" not in url and "youtu.be" not in url:
@@ -242,7 +262,7 @@ async def ingest_youtube(
         "filename": f"YouTube: {url}",
         "file_type": "youtube",
         "file_size": None,
-        "s3_url": url,  # For YouTube, s3_url stores the video URL
+        "s3_url": url,  # Temporarily store source URL; replaced with S3 key inside pipeline
         "status": "uploaded",
         "error_reason": None,
         "created_at": now,
@@ -252,7 +272,7 @@ async def ingest_youtube(
     db = get_database()
     await db.sources.insert_one(source_doc)
 
-    # Trigger background ingestion pipeline
+    # Trigger background ETL
     background_tasks.add_task(
         run_ingestion_pipeline,
         source_id=source_id,
@@ -270,7 +290,7 @@ async def list_sources(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Step 9: List all sources for the current authenticated user.
+    Step 9: List all sources for the current authenticated user (with presigned S3 URLs).
     """
     db = get_database()
     cursor = db.sources.find({"user_id": str(current_user["_id"])})
@@ -284,7 +304,7 @@ async def get_source_status(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Step 9: Get the ingestion status of a specific source.
+    Step 9: Get the status of a specific source (with presigned S3 URL).
     """
     if not ObjectId.is_valid(source_id):
         raise HTTPException(
@@ -312,7 +332,7 @@ async def delete_source(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Delete a source and remove its file from S3 / Local storage.
+    Delete a source and remove its corresponding storage files and vector chunks.
     """
     if not ObjectId.is_valid(source_id):
         raise HTTPException(
@@ -331,10 +351,9 @@ async def delete_source(
             detail="Source not found or access denied."
         )
 
-    # Delete from S3 / local storage if it's a file
-    if source["file_type"] in {"pdf", "docx", "xlsx", "txt"} and source.get("s3_url"):
-        s3_key = f"{source['user_id']}/{source['_id']}.{source['file_type']}"
-        await s3_service.delete_file(s3_key)
+    # Delete original / scraped files from S3 if key exists
+    if source.get("s3_url") and source["s3_url"].startswith("researchmind/"):
+        await s3_service.delete_file(source["s3_url"])
 
     # Delete all semantic chunks and vector embeddings associated with this source
     await vector_service.delete_source_chunks(ObjectId(source_id))
