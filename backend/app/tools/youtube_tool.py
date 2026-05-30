@@ -1,9 +1,23 @@
+import logging
+import asyncio
 import re
-from youtube_transcript_api import YouTubeTranscriptApi
+from typing import List
+import httpx
+from pydantic import BaseModel, Field
 from langchain_core.tools import tool
+from youtube_transcript_api import YouTubeTranscriptApi
+
+from app.tools.utils import with_timeout_and_retry
+
+logger = logging.getLogger("researchmind.tools")
+
+class YouTubeTranscriptResult(BaseModel):
+    transcript: str = Field(..., description="Transcript of the video content")
+    video_title: str = Field(..., description="Title of the YouTube video")
+    url: str = Field(..., description="URL of the video source")
 
 def extract_video_id(url: str) -> str | None:
-    """Helper to extract video ID from various YouTube URL formats."""
+    """Extract video ID from various YouTube URL formats."""
     patterns = [
         r'(?:v=|\/v\/|embed\/|youtu\.be\/|\/embed\/|\/watch\?v=|\/watch\?.+&v=)([^#\&\?]+)',
     ]
@@ -13,24 +27,61 @@ def extract_video_id(url: str) -> str | None:
             return match.group(1)
     return None
 
+async def fetch_video_title(video_id: str) -> str:
+    """Fetches video HTML metadata to parse the exact video title without requiring an API key."""
+    watch_url = f"https://www.youtube.com/watch?v={video_id}"
+    try:
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+            response = await client.get(watch_url, headers=headers)
+            if response.status_code == 200:
+                title_match = re.search(r"<title>(.*?)</title>", response.text)
+                if title_match:
+                    title = title_match.group(1).strip()
+                    # Clean the typical " - YouTube" suffix
+                    if title.endswith("- YouTube"):
+                        title = title[:-9].strip()
+                    return title
+    except Exception as e:
+        logger.debug(f"[YouTube Tool] Failed to fetch video title: {e}")
+    return f"YouTube Video ID: {video_id}"
+
+def sync_get_transcript(video_id: str) -> str:
+    """Wrapper to run the synchronous YouTube transcript fetch in a thread pool."""
+    transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+    # Join entries into a single text block
+    full_text = " ".join([entry["text"] for entry in transcript_list])
+    # Truncate if exceptionally long to avoid contextual overloading
+    if len(full_text) > 10000:
+        full_text = full_text[:10000] + "\n[Transcript truncated due to length limits]"
+    return full_text
+
 @tool
-def youtube_transcript(url: str) -> str:
+@with_timeout_and_retry(timeout_seconds=5.0, max_retries=1)
+async def youtube_transcript(url: str) -> List[YouTubeTranscriptResult]:
     """
-    Fetch the full transcript text of a YouTube video given its URL.
-    Input should be a complete YouTube URL.
+    Fetch transcript from YouTube videos for video content analysis.
+    Input should be a YouTube video URL string.
     """
     video_id = extract_video_id(url)
     if not video_id:
-        return f"Could not extract a valid YouTube video ID from URL: '{url}'"
-        
+        logger.warning(f"[YouTube Tool] Could not extract video ID from '{url}'")
+        return []
+
+    # Run transcript fetch in a separate thread and fetch title concurrently
     try:
-        transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
-        full_text = " ".join([entry["text"] for entry in transcript_list])
+        transcript_task = asyncio.to_thread(sync_get_transcript, video_id)
+        title_task = fetch_video_title(video_id)
         
-        # Limit text length to avoid token bloating in contexts
-        if len(full_text) > 10000:
-            full_text = full_text[:10000] + "\n[Transcript truncated due to length limits]"
-            
-        return f"Video URL: {url}\nVideo ID: {video_id}\nTranscript:\n{full_text}"
+        transcript_text, title = await asyncio.gather(transcript_task, title_task)
+        
+        return [
+            YouTubeTranscriptResult(
+                transcript=transcript_text,
+                video_title=title,
+                url=url
+            )
+        ]
     except Exception as e:
-        return f"Exception occurred while fetching YouTube transcript: {str(e)}"
+        logger.error(f"[YouTube Tool] Failed to process video {video_id}: {e}")
+        return []

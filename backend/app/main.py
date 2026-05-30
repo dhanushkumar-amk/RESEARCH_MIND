@@ -29,6 +29,9 @@ async def lifespan(_: FastAPI):
     start_scheduler()
     # Pre-fetch chunks and initialize BM25 index on startup
     await init_bm25_retriever()
+    # Run tool registry health checks on startup
+    from app.tools.tool_registry import run_tool_registry_health_checks
+    await run_tool_registry_health_checks()
     yield
     shutdown_scheduler()
     await close_mongo_connection()

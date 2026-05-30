@@ -97,6 +97,8 @@ class Settings(BaseSettings):
     reddit_client_id: str | None = Field(default=None, validation_alias=AliasChoices("REDDIT_CLIENT_ID"))
     reddit_client_secret: str | None = Field(default=None, validation_alias=AliasChoices("REDDIT_CLIENT_SECRET"))
     github_token: str | None = Field(default=None, validation_alias=AliasChoices("GITHUB_TOKEN"))
+    pubmed_email: str = Field(default="your@email.com", validation_alias=AliasChoices("PUBMED_EMAIL"))
+    reddit_user_agent: str = Field(default="ResearchMind/1.0", validation_alias=AliasChoices("REDDIT_USER_AGENT"))
     redis_url: str | None = Field(default=None, validation_alias=AliasChoices("REDIS_URL"))
     upstash_redis_rest_url: str | None = Field(default=None, validation_alias=AliasChoices("UPSTASH_REDIS_REST_URL"))
     upstash_redis_rest_token: str | None = Field(default=None, validation_alias=AliasChoices("UPSTASH_REDIS_REST_TOKEN"))

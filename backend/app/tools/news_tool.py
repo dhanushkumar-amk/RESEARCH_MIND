@@ -1,64 +1,94 @@
+import logging
+from typing import List
 import httpx
+from pydantic import BaseModel, Field
 from langchain_core.tools import tool
+
 from app.core.config import settings
-from app.tools.duckduckgo_tool import duckduckgo_search
+from app.tools.utils import with_timeout_and_retry
+from app.tools.duckduckgo_tool import duckduckgo_search, DuckDuckGoSearchResult
+
+logger = logging.getLogger("researchmind.tools")
+
+class NewsSearchResult(BaseModel):
+    title: str = Field(..., description="Title of the news article")
+    description: str = Field(..., description="Description or abstract of the article")
+    url: str = Field(..., description="URL link to the article page")
+    source: str = Field(..., description="Source name of the news outlet")
+    date: str = Field(..., description="Date of article publication (YYYY-MM-DD)")
+
+async def fallback_ddg_search(query: str) -> List[NewsSearchResult]:
+    """Fallback search using DuckDuckGo to match NewsSearchResult format."""
+    try:
+        ddg_results: List[DuckDuckGoSearchResult] = await duckduckgo_search.ainvoke(query)
+        output = []
+        for r in ddg_results:
+            output.append(
+                NewsSearchResult(
+                    title=r.title,
+                    description=r.body,
+                    url=r.url,
+                    source="DuckDuckGo Search",
+                    date="Current"
+                )
+            )
+        return output
+    except Exception as e:
+        logger.error(f"[News Tool] Fallback DuckDuckGo search failed: {e}")
+        return []
 
 @tool
-async def news_search(query: str) -> str:
+@with_timeout_and_retry(timeout_seconds=5.0, max_retries=1)
+async def news_search(query: str) -> List[NewsSearchResult]:
     """
-    Search real-time current news articles and headlines.
-    Input should be a query string.
+    Search current news articles for recent events and developments.
+    Input should be a search query string.
     """
     api_key = settings.newsapi_key
-    
-    # Fallback to duckduckgo search if NewsAPI key is not configured
     if not api_key or "your_news_api" in api_key:
-        print("[News Tool] NewsAPI key not set. Falling back to DuckDuckGo Search.")
-        try:
-            # Invoke the duckduckgo_search tool synchronously
-            return duckduckgo_search.invoke(query)
-        except Exception as e:
-            return f"DuckDuckGo fallback search failed: {e}"
-            
+        logger.info("[News Tool] NewsAPI key not set. Falling back to DuckDuckGo Search.")
+        return await fallback_ddg_search(query)
+
     url = "https://newsapi.org/v2/everything"
     params = {
         "q": query,
-        "sortBy": "publishedAt",
+        "sortBy": "relevance",
+        "language": "en",
         "pageSize": 5,
         "apiKey": api_key
     }
-    
+
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=4.0) as client:
             response = await client.get(url, params=params)
             if response.status_code != 200:
-                # If NewsAPI fails, fall back to DuckDuckGo
-                print(f"[News Tool] NewsAPI status {response.status_code}. Falling back to DuckDuckGo.")
-                return duckduckgo_search.invoke(query)
+                logger.info(f"[News Tool] NewsAPI status {response.status_code}. Falling back to DuckDuckGo.")
+                return await fallback_ddg_search(query)
                 
             data = response.json()
             articles = data.get("articles", [])
-            if not articles:
-                return f"No news articles found for query: '{query}'"
-                
-            results = []
+            
+            output = []
             for art in articles:
-                title = art.get("title")
-                art_url = art.get("url")
-                desc = art.get("description") or "No content available."
+                title = art.get("title", "No Title")
+                art_url = art.get("url", "")
+                desc = art.get("description") or art.get("content") or "No description available."
                 source = art.get("source", {}).get("name", "Unknown Source")
-                published = art.get("publishedAt", "Unknown Date")
+                published = art.get("publishedAt", "")
                 
-                results.append(
-                    f"Title: {title}\n"
-                    f"Source: {source} ({published})\n"
-                    f"URL: {art_url}\n"
-                    f"Description: {desc}\n"
+                # Format date string
+                date_str = published[:10] if published and len(published) >= 10 else "Unknown Date"
+                
+                output.append(
+                    NewsSearchResult(
+                        title=title,
+                        description=desc,
+                        url=art_url,
+                        source=source,
+                        date=date_str
+                    )
                 )
-            return "\n---\n".join(results)
+            return output
     except Exception as e:
-        print(f"[News Tool] NewsAPI exception: {e}. Falling back to DuckDuckGo.")
-        try:
-            return duckduckgo_search.invoke(query)
-        except Exception as ddg_err:
-            return f"Exception occurred during News Search: {str(e)} and fallback DDG also failed: {ddg_err}"
+        logger.warning(f"[News Tool] NewsAPI exception: {e}. Falling back to DuckDuckGo.")
+        return await fallback_ddg_search(query)
