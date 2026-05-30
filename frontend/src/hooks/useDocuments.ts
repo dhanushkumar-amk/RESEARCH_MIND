@@ -9,7 +9,7 @@ export function useDocuments() {
   const [error, setError] = useState<string | null>(null);
   
   // Keep track of polling interval
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<any>(null);
 
   const fetchDocuments = useCallback(async () => {
     if (!accessToken) return;

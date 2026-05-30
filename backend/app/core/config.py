@@ -92,6 +92,11 @@ class Settings(BaseSettings):
     gemini_api_key: str | None = Field(default=None, validation_alias=AliasChoices("GEMINI_API_KEY"))
     openrouter_api_key: str | None = Field(default=None, validation_alias=AliasChoices("OPENROUTER_API_KEY"))
     langchain_api_key: str | None = Field(default=None, validation_alias=AliasChoices("LANGCHAIN_API_KEY"))
+    tavily_api_key: str | None = Field(default=None, validation_alias=AliasChoices("TAVILY_API_KEY"))
+    newsapi_key: str | None = Field(default=None, validation_alias=AliasChoices("NEWS_API_KEY", "NEWSAPI_KEY"))
+    reddit_client_id: str | None = Field(default=None, validation_alias=AliasChoices("REDDIT_CLIENT_ID"))
+    reddit_client_secret: str | None = Field(default=None, validation_alias=AliasChoices("REDDIT_CLIENT_SECRET"))
+    github_token: str | None = Field(default=None, validation_alias=AliasChoices("GITHUB_TOKEN"))
 
 
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   HelpCircle, Search, Mail, MessageSquare, BookOpen,
   ChevronDown, ChevronUp, Sparkles, FileText, Globe

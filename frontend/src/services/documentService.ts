@@ -10,6 +10,7 @@ export interface SourceResponse {
   source_url?: string | null;
   status: 'uploaded' | 'extracting' | 'chunking' | 'embedding' | 'indexing' | 'indexed' | 'failed';
   error_reason?: string | null;
+  chunk_count?: number | null;
   created_at: string;
   updated_at: string;
 }

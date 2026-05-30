@@ -21,6 +21,8 @@ from langchain_community.cross_encoders import HuggingFaceCrossEncoder
 from langchain_classic.retrievers.document_compressors import CrossEncoderReranker
 from langchain_litellm import ChatLiteLLM
 from langchain_core.callbacks import BaseCallbackHandler
+from langchain_classic.retrievers import EnsembleRetriever
+from langchain_core.retrievers import BaseRetriever
 from langchain_classic.memory import ConversationSummaryMemory
 
 from app.dependencies.auth import get_current_user
@@ -203,37 +205,29 @@ except Exception:
 def count_tokens(text: str) -> int:
     return len(encoding.encode(text))
 
+class PrecomputedRetriever(BaseRetriever):
+    docs: list[Document]
+    
+    def _get_relevant_documents(self, query: str) -> list[Document]:
+        return self.docs
+
 def merge_hybrid_results(vector_docs: list[Document], bm25_docs: list[Document], limit: int = 20) -> list[Document]:
     """
-    Step 4: Combine Vector Search and BM25 results using Reciprocal Rank Fusion (RRF).
+    Step 4: Combine Vector Search and BM25 results using LangChain's EnsembleRetriever.
     Applies weights: 0.6 vector, 0.4 BM25.
     Returns the top 20 unique merged results.
     """
-    k = 60
-    rrf_scores = {}
-    docs_by_content = {}
+    r1 = PrecomputedRetriever(docs=vector_docs)
+    r2 = PrecomputedRetriever(docs=bm25_docs)
     
-    # Process vector results
-    for rank, doc in enumerate(vector_docs):
-        content = doc.page_content
-        docs_by_content[content] = doc
-        rrf_scores[content] = rrf_scores.get(content, 0.0) + 0.6 * (1.0 / (k + (rank + 1)))
-        
-    # Process BM25 results
-    for rank, doc in enumerate(bm25_docs):
-        content = doc.page_content
-        docs_by_content[content] = doc
-        rrf_scores[content] = rrf_scores.get(content, 0.0) + 0.4 * (1.0 / (k + (rank + 1)))
-        
-    sorted_contents = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
+    ensemble = EnsembleRetriever(
+        retrievers=[r1, r2],
+        weights=[0.6, 0.4]
+    )
     
-    fused_docs = []
-    for content, score in sorted_contents[:limit]:
-        doc = docs_by_content[content]
-        doc.metadata["rrf_score"] = float(score)
-        fused_docs.append(doc)
-        
-    return fused_docs
+    # Invoke RRF fusion using the EnsembleRetriever
+    fused_docs = ensemble.invoke("dummy query")
+    return fused_docs[:limit]
 
 def reorder_context_chunks(chunks: list[Document]) -> list[Document]:
     """

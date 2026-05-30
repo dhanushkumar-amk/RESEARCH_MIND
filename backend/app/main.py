@@ -11,6 +11,7 @@ import time
 from app.api.routes.auth import router as auth_router
 from app.api.routes.sources import router as sources_router
 from app.api.routes.chat import router as chat_router, init_bm25_retriever
+from app.api.routes.agents import router as agents_router
 from app.core.config import settings
 from app.core.database import close_mongo_connection, connect_to_mongo
 from app.core.scheduler import start_scheduler, shutdown_scheduler
@@ -46,6 +47,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(sources_router)
 app.include_router(chat_router)
+app.include_router(agents_router)
 
 @app.get("/")
 async def root():
