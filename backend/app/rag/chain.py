@@ -62,24 +62,34 @@ class PrecomputedRetriever(BaseRetriever):
 def merge_hybrid_results(vector_docs: list[Document], bm25_docs: list[Document], limit: int = 20) -> list[Document]:
     """
     Combine Vector Search and BM25 results using LangChain's EnsembleRetriever.
-    Applies weights: 0.6 vector, 0.4 BM25.
-    Returns the top 20 unique merged results.
+    Applies weights from active RAG configuration dynamically.
+    Returns the top unique merged results.
     """
+    from app.mlflow.manager import BestConfigManager
+    rag_config = BestConfigManager.get_applied_rag_config()
+    vector_weight = rag_config.get("hybrid_vector_weight", 0.6)
+    bm25_weight = rag_config.get("hybrid_bm25_weight", 0.4)
+    k_limit = rag_config.get("k_value", limit)
+
     r1 = PrecomputedRetriever(docs=vector_docs)
     r2 = PrecomputedRetriever(docs=bm25_docs)
     
     ensemble = EnsembleRetriever(
         retrievers=[r1, r2],
-        weights=[0.6, 0.4]
+        weights=[vector_weight, bm25_weight]
     )
     
     fused_docs = ensemble.invoke("dummy query")
-    return fused_docs[:limit]
+    return fused_docs[:k_limit]
 
 async def search_vector_async(inputs: dict) -> list[Document]:
     query = inputs["query"]
     user_id = inputs["user_id"]
     source_ids = inputs.get("source_ids")
+    
+    from app.mlflow.manager import BestConfigManager
+    rag_config = BestConfigManager.get_applied_rag_config()
+    k_val = rag_config.get("k_value", 20)
     
     pre_filter = {"user_id": user_id}
     if source_ids:
@@ -88,7 +98,7 @@ async def search_vector_async(inputs: dict) -> list[Document]:
     try:
         results_with_score = await vector_store.asimilarity_search_with_score(
             query,
-            k=20,
+            k=k_val,
             pre_filter=pre_filter
         )
     except (AttributeError, NotImplementedError):
@@ -96,7 +106,7 @@ async def search_vector_async(inputs: dict) -> list[Document]:
         results_with_score = await asyncio.to_thread(
             vector_store.similarity_search_with_score,
             query,
-            k=20,
+            k=k_val,
             pre_filter=pre_filter
         )
     
@@ -111,7 +121,12 @@ async def search_bm25_async(inputs: dict) -> list[Document]:
     user_id = inputs["user_id"]
     source_ids = inputs.get("source_ids")
     
+    from app.mlflow.manager import BestConfigManager
+    rag_config = BestConfigManager.get_applied_rag_config()
+    k_val = rag_config.get("k_value", 20)
+    
     retriever = get_user_bm25_retriever(user_id, source_ids)
+    retriever.k = k_val
     docs = await asyncio.to_thread(retriever.invoke, query)
     return docs
 
@@ -138,10 +153,16 @@ async def rerank_step_runnable(x: dict) -> dict:
     query = x["query"]
     compressor = get_rerank_compressor()
     
+    from app.mlflow.manager import BestConfigManager
+    rag_config = BestConfigManager.get_applied_rag_config()
+    top_n = rag_config.get("reranker_top_n", 5)
+    
     if compressor and fused_docs:
+        # Dynamic top_n update
+        compressor.top_n = top_n
         reranked_docs = await asyncio.to_thread(compressor.compress_documents, fused_docs, query)
     else:
-        reranked_docs = fused_docs[:5]
+        reranked_docs = fused_docs[:top_n]
         
     for doc in reranked_docs:
         if hasattr(doc, "state") and "relevance_score" in doc.state:

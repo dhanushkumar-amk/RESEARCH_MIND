@@ -167,6 +167,24 @@ async def research_agent(state: AgentState, config: RunnableConfig) -> dict:
     configurable = config.get("configurable", {})
     queue = configurable.get("queue")
     
+    # Retrieve dynamic agent configs
+    from app.mlflow.manager import BestConfigManager
+    agent_config = BestConfigManager.get_applied_agent_config()
+    
+    # Configure primary model dynamically
+    primary_llm.model = agent_config.get("primary_model", "groq/llama-3.3-70b-versatile")
+    primary_llm.temperature = agent_config.get("temperature", 0.1)
+    primary_llm.max_tokens = agent_config.get("max_tokens", 1000)
+    
+    # Filter tools according to tools_used list
+    allowed_tools = agent_config.get("tools_used", [])
+    if allowed_tools:
+        tools = [get_tool_by_name(t) for t in allowed_tools if get_tool_by_name(t)]
+    else:
+        tools = all_research_tools
+        
+    dynamic_llm_with_tools = primary_llm.bind_tools(tools)
+    
     if queue:
         queue.put_nowait({
             "event": "agent_start",
@@ -201,8 +219,8 @@ async def research_agent(state: AgentState, config: RunnableConfig) -> dict:
         logger.info(f"[Research Agent] Loop Turn {iteration + 1}/{max_iterations}")
         
         try:
-            # Decide on tool calls
-            response = await llm_with_tools.ainvoke(messages, config=config)
+            # Decide on tool calls using dynamic LLM with active tools
+            response = await dynamic_llm_with_tools.ainvoke(messages, config=config)
             messages.append(response)
             
             tool_calls = getattr(response, "tool_calls", [])

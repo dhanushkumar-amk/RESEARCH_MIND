@@ -14,6 +14,7 @@ from app.api.routes.chat import router as chat_router, init_bm25_retriever
 from app.api.routes.agents import router as agents_router
 from app.api.routes.security import router as security_router
 from app.evaluation.evaluation_api import router as evaluation_router
+from app.mlflow.endpoints import router as mlflow_router
 from app.core.config import settings
 from app.core.database import close_mongo_connection, connect_to_mongo
 from app.core.scheduler import start_scheduler, shutdown_scheduler
@@ -27,6 +28,13 @@ from app.security.rate_limiter import limiter
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await connect_to_mongo()
+    
+    # Initialize MLflow and apply best configurations
+    from app.mlflow.config import init_mlflow
+    from app.mlflow.manager import BestConfigManager
+    init_mlflow()
+    await BestConfigManager.apply_best_config()
+    
     start_scheduler()
     # Pre-fetch chunks and initialize BM25 index on startup
     await init_bm25_retriever()
@@ -65,6 +73,7 @@ app.include_router(chat_router)
 app.include_router(agents_router)
 app.include_router(security_router)
 app.include_router(evaluation_router)
+app.include_router(mlflow_router)
 
 @app.get("/")
 async def root():

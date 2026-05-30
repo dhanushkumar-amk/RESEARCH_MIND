@@ -126,6 +126,11 @@ class Settings(BaseSettings):
 
     mlflow_tracking_uri: str | None = Field(default="http://localhost:5000", validation_alias=AliasChoices("MLFLOW_TRACKING_URI"))
     mlflow_experiment: str = Field(default="researchmind-rag-evaluation", validation_alias=AliasChoices("MLFLOW_EXPERIMENT"))
+    mlflow_experiment_rag: str = Field(default="researchmind-rag-config", validation_alias=AliasChoices("MLFLOW_EXPERIMENT_RAG"))
+    mlflow_experiment_agents: str = Field(default="researchmind-agent-runs", validation_alias=AliasChoices("MLFLOW_EXPERIMENT_AGENTS"))
+    mlflow_s3_bucket: str = Field(default="researchmind-mlflow", validation_alias=AliasChoices("MLFLOW_S3_BUCKET"))
+    experiment_sample_size: int = Field(default=20, validation_alias=AliasChoices("EXPERIMENT_SAMPLE_SIZE"))
+    experiment_improvement_threshold: float = Field(default=0.05, validation_alias=AliasChoices("EXPERIMENT_IMPROVEMENT_THRESHOLD"))
 
     langchain_project: str | None = Field(default="researchmind", validation_alias=AliasChoices("LANGCHAIN_PROJECT"))
     langchain_tracing_v2: bool = Field(default=True, validation_alias=AliasChoices("LANGCHAIN_TRACING_V2"))
