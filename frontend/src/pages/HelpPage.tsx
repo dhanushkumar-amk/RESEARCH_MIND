@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { 
-  HelpCircle, Search, Mail, MessageSquare, BookOpen, 
+import {
+  HelpCircle, Search, Mail, MessageSquare, BookOpen,
   ChevronDown, ChevronUp, Sparkles, FileText, Globe
 } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
@@ -54,7 +54,7 @@ const HelpPage = () => {
     setExpandedFaq(prev => prev === id ? null : id);
   };
 
-  const filteredFaqs = faqs.filter(faq => 
+  const filteredFaqs = faqs.filter(faq =>
     faq.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
     faq.answer.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -62,7 +62,7 @@ const HelpPage = () => {
   return (
     <AppShell>
       <div className="max-w-[900px] mx-auto space-y-6 lg:space-y-8 font-sans antialiased">
-        
+
         {/* Top Header */}
         <div className="text-center max-w-xl mx-auto space-y-2">
           <h1 className="text-2xl lg:text-3xl font-extrabold text-neutral-900 tracking-tight">
@@ -96,7 +96,7 @@ const HelpPage = () => {
             {filteredFaqs.map((faq) => {
               const isExpanded = expandedFaq === faq.id;
               return (
-                <div 
+                <div
                   key={faq.id}
                   className="bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.01)] transition-all"
                 >
@@ -125,7 +125,7 @@ const HelpPage = () => {
                 </div>
               );
             })}
-            
+
             {filteredFaqs.length === 0 && (
               <div className="text-center py-10 border border-dashed border-neutral-200 rounded-xl bg-white text-neutral-450 font-medium">
                 No FAQs matches your search parameters. Try searching general topics.

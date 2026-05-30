@@ -7,6 +7,11 @@ export interface ChatSource {
   matchScore: string;
 }
 
+export interface ChatSuggestion {
+  id: string;
+  question: string;
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -14,6 +19,8 @@ export interface ChatMessage {
   sources?: ChatSource[];
   model?: string;
   latency?: number;
+  isStreaming?: boolean;
+  suggestions?: ChatSuggestion[];
 }
 
 export const chatService = {
