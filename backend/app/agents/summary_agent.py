@@ -2,10 +2,12 @@ import logging
 import time
 import json
 import asyncio
+from datetime import datetime, timezone
 from typing import Dict, List, Any
 from pydantic import BaseModel, Field
 from langchain_core.runnables import RunnableConfig
 from langchain_core.messages import SystemMessage, HumanMessage
+from langsmith import Client
 
 from app.agents.state import AgentState
 from app.core.config import settings
@@ -13,8 +15,19 @@ from app.core.database import get_database
 from app.rag.chain import resilient_llm, prompt_template
 from app.rag.context import format_chunks_with_lost_in_the_middle
 from app.rag.memory import get_session_history_and_summary
+from app.context.assembler import ContextAssembler
+from app.context.entity_memory import EntityMemory
+from app.security.guard_pipeline import execute_output_guards
 
 logger = logging.getLogger("researchmind")
+
+# Initialize LangSmith client
+ls_client = None
+if settings.langchain_api_key:
+    try:
+        ls_client = Client(api_url="https://api.smith.langchain.com", api_key=settings.langchain_api_key)
+    except Exception as ls_init_err:
+        logger.warning(f"[Summary Agent] Failed to initialize LangSmith client: {ls_init_err}")
 
 class ResearchReportSchema(BaseModel):
     executive_summary: str = Field(..., description="High-level summary of the findings.")
@@ -31,12 +44,6 @@ async def summary_agent(state: AgentState, config: RunnableConfig) -> dict:
     """
     logger.info("[Summary Agent] Synthesizing research results...")
     
-    # 1. Format context within the 3200 token budget
-    context_str, included_sources = format_chunks_with_lost_in_the_middle(
-        state.get("reranked_chunks", []), 
-        max_tokens=3200
-    )
-    
     # Expose inputs to config
     configurable = config.get("configurable", {})
     user_id = configurable.get("user_id")
@@ -48,18 +55,88 @@ async def summary_agent(state: AgentState, config: RunnableConfig) -> dict:
             "event": "agent_start",
             "data": json.dumps({"agent": "summary", "status": "starting"})
         })
-    
-    # 2. Retrieve history within 2400 token budget
-    db = get_database()
-    history_str = await get_session_history_and_summary(user_id, session_id, db)
-    
-    # 3. Format inputs for standard prompt template
-    prompt_value = prompt_template.format(
-        context=context_str,
-        history=history_str,
-        query=state["question"]
+
+    # Assemble dynamic context using ContextAssembler
+    assembler = ContextAssembler()
+    assembly_start = time.time()
+    assembled = await assembler.assemble_context(
+        question=state["question"],
+        session_id=session_id,
+        chunks=state.get("reranked_chunks", []),
+        user_id=user_id
     )
+    assembly_latency_ms = int((time.time() - assembly_start) * 1000)
+
+    # Format prompt value using assembled components
+    prompt_value = f"{assembled.system_prompt}\n\n"
+    if assembled.history:
+        prompt_value += "Conversation History:\n"
+        for m in assembled.history:
+            role_label = "Human" if m["role"] == "human" else ("System" if m["role"] == "system" else "Assistant")
+            prompt_value += f"{role_label}: {m['content']}\n"
+        prompt_value += "\n"
     
+    prompt_value += f"Retrieved Context:\n{assembled.context}\n\n"
+    prompt_value += f"Question: {assembled.query}"
+
+    # Log token breakdown metrics to LangSmith
+    if ls_client:
+        try:
+            db = get_database()
+            entity_mem = EntityMemory()
+            
+            # Check if summary was triggered/exists
+            sw_record = await db.sliding_window_memory.find_one({"session_id": session_id})
+            summary_exists = bool(sw_record.get("summary")) if sw_record else False
+            
+            # Extract entities count
+            entities = await entity_mem.get_entities(session_id)
+            entities_count = len(entities)
+            
+            # Check if window has slid
+            total_history_count = await db.chat_history.count_documents({"session_id": session_id})
+            window_slid = total_history_count > 10
+
+            tags = ["context.token_budget"]
+            if summary_exists:
+                tags.append("context.summary_triggered")
+            if entities_count > 0:
+                tags.append("context.entities_extracted")
+            if window_slid:
+                tags.append("context.window_slid")
+
+            now = datetime.now(timezone.utc)
+            await asyncio.to_thread(
+                ls_client.create_run,
+                name="Context Assembly Pipeline",
+                run_type="chain",
+                inputs={"question": state["question"], "session_id": session_id},
+                outputs={
+                    "token_breakdown": assembled.token_breakdown.model_dump(),
+                    "summary_triggered": summary_exists,
+                    "entities_extracted_count": entities_count,
+                    "window_slid": window_slid,
+                    "context_assembly_latency_ms": assembly_latency_ms
+                },
+                tags=tags,
+                project_name=settings.langchain_project or "researchmind",
+                start_time=now,
+                end_time=now
+            )
+        except Exception as ls_err:
+            logger.debug(f"[Summary Agent] LangSmith metrics logging failed: {ls_err}")
+
+    context_str = assembled.context
+    
+    # Construct included_sources from matching reranked chunks in assembled context
+    included_sources = []
+    for chunk in state.get("reranked_chunks", []):
+        if chunk.page_content in context_str:
+            included_sources.append({
+                "title": chunk.metadata.get("filename") or chunk.metadata.get("title") or chunk.metadata.get("source") or "Unknown Source",
+                "score": chunk.metadata.get("relevance_score") or chunk.metadata.get("score") or 0.0
+            })
+            
     # Emit sources event if queue is present
     if queue:
         # Format sources to fit: {"title": "", "url": "", "score": 0}
@@ -142,6 +219,37 @@ async def summary_agent(state: AgentState, config: RunnableConfig) -> dict:
         )
         
         if not blocked:
+            from app.evaluation.ragas_evaluator import RAGASEvaluator
+            evaluator = RAGASEvaluator()
+            try:
+                eval_res = await evaluator.evaluate_response(
+                    question=state["question"],
+                    answer=cleaned_answer,
+                    contexts=[c.page_content for c in state.get("reranked_chunks", [])],
+                    session_id=session_id,
+                    model_used=model_used
+                )
+                
+                # Check for answer relevance threshold: regenerate if below 0.50 (once)
+                if eval_res.needs_regeneration and attempt < max_attempts - 1:
+                    logger.warning(f"[Summary Agent] Answer relevance {eval_res.answer_relevance:.2f} is below threshold 0.50. Triggering regeneration...")
+                    current_prompt = (
+                        f"{prompt_value}\n\n"
+                        f"[System Warning: Your previous response did not directly address the user's question. "
+                        f"Please generate a new response that is highly relevant, detailed, and directly answers: '{state['question']}']"
+                    )
+                    attempt += 1
+                    continue
+                
+                # If faithfulness below 0.6: Add disclaimer to response
+                if eval_res.needs_disclaimer:
+                    logger.warning(f"[Summary Agent] Faithfulness {eval_res.faithfulness:.2f} is below threshold 0.60. Appending disclaimer.")
+                    disclaimer = "\n\n*Disclaimer: This response has been flagged with potential grounding risks and may contain minor factual inaccuracies or hallucinated content. Please verify critical facts.*"
+                    cleaned_answer += disclaimer
+                
+            except Exception as e:
+                logger.error(f"[Summary Agent] RAGAS evaluation failed inside summary agent: {e}", exc_info=True)
+
             full_answer = cleaned_answer
             break
         else:

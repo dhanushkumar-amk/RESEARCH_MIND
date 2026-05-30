@@ -1,25 +1,26 @@
 import logging
 import asyncio
-import re
+import json
 from langchain_core.documents import Document
 from langchain_core.runnables import RunnableConfig
+
 from app.agents.state import AgentState
 from app.rag.chain import primary_llm
+from app.evaluation.ragas_evaluator import RAGASEvaluator
 
 logger = logging.getLogger("researchmind")
 
 async def critic_agent(state: AgentState, config: RunnableConfig) -> dict:
     """
     NODE 3: Critic Agent
-    Receives retrieved_chunks + web_results, scores each from 0-10,
-    filters scores < 5, and determines if a retry is needed.
+    Scores retrieved documents, filters low-quality chunks, and runs RAGAS evaluation
+    on faithfulness + context_relevance to determine if a retry is needed.
     """
-    # Extract queue from config parameters
     configurable = config.get("configurable", {})
     queue = configurable.get("queue")
+    session_id = state.get("session_id", "default")
     
     if queue:
-        import json
         queue.put_nowait({
             "event": "agent_start",
             "data": json.dumps({"agent": "critic", "status": "starting"})
@@ -58,15 +59,13 @@ async def critic_agent(state: AgentState, config: RunnableConfig) -> dict:
         try:
             response = await primary_llm.ainvoke(prompt, config=config)
             content = response.content.strip()
-            # Extract number
+            # Find any integer in response
+            import re
             match = re.search(r'\b(10|[0-9])\b', content)
-            if match:
-                score = float(match.group(1))
-            else:
-                score = 5.0  # Fallback neutral score
+            score = float(match.group(1)) if match else 5.0
         except Exception as e:
             logger.error(f"[Critic Agent] Error scoring document: {e}")
-            score = 4.0  # Fail-low score
+            score = 4.0
             
         doc.metadata["relevance_score"] = score
         return doc, score
@@ -77,34 +76,68 @@ async def critic_agent(state: AgentState, config: RunnableConfig) -> dict:
     
     # Filter documents with score >= 5
     filtered_docs = [doc for doc, score in scored_results if score >= 5]
-    
-    # Sort descending by score
     filtered_docs.sort(key=lambda x: x.metadata.get("relevance_score", 0.0), reverse=True)
-    
-    # Take top 5 best documents
     top_docs = filtered_docs[:5]
-    best_score = top_docs[0].metadata["relevance_score"] if top_docs else 0.0
+
+    # Generate a draft/candidate answer using the top documents context
+    # to run RAGAS faithfulness and context relevance check.
+    logger.info("[Critic Agent] Generating candidate draft answer for RAGAS evaluation...")
+    draft_prompt = (
+        f"Based on the following contexts, provide a concise, direct, and factual answer to the question.\n"
+        f"Question: {state['question']}\n\n"
+        f"Contexts:\n" + "\n\n".join([f"[Doc {i}]: {d.page_content}" for i, d in enumerate(top_docs)]) + "\n\n"
+        f"Answer:"
+    )
     
-    # Retry condition evaluation
+    candidate_answer = ""
+    try:
+        draft_response = await primary_llm.ainvoke(draft_prompt, config=config)
+        candidate_answer = draft_response.content.strip()
+    except Exception as e:
+        logger.error(f"[Critic Agent] Failed to generate draft answer: {e}")
+        candidate_answer = "Draft answer generation failed."
+
+    # Run RAGAS evaluator on faithfulness and context relevance
+    evaluator = RAGASEvaluator()
+    contexts_list = [d.page_content for d in top_docs]
+    
+    try:
+        eval_res = await evaluator.evaluate_response(
+            question=state["question"],
+            answer=candidate_answer,
+            contexts=contexts_list,
+            session_id=session_id,
+            model_used=getattr(primary_llm, "model", "groq/llama-3.3-70b-versatile")
+        )
+        faithfulness = eval_res.faithfulness
+        context_relevance = eval_res.context_relevance
+        composite = (faithfulness + context_relevance) / 2
+    except Exception as e:
+        logger.error(f"[Critic Agent] RAGAS evaluation failed inside critic: {e}", exc_info=True)
+        faithfulness = 0.0
+        context_relevance = 0.0
+        composite = 0.0
+
+    # Route logic based on composite score
     retry_count = state.get("retry_count", 0)
     needs_retry = False
     
-    if best_score < 7.0 and retry_count < 2:
+    if composite < 0.50 and retry_count < 2:
         needs_retry = True
         retry_count += 1
-        logger.warning(f"[Critic Agent] Best context score is {best_score} (< 7.0). Triggering RETRY {retry_count}/2...")
+        logger.warning(f"[Critic Agent] RAGAS score {composite:.2f} is below 0.50. Triggering RETRY {retry_count}/2...")
     else:
-        logger.info(f"[Critic Agent] Quality criteria met with best score: {best_score}. Proceeding to summary.")
+        logger.info(f"[Critic Agent] RAGAS score {composite:.2f} meets routing requirements. Proceeding to Summary Agent.")
         
     if queue:
         queue.put_nowait({
             "event": "agent_complete",
-            "data": json.dumps({"agent": "critic", "status": "done", "quality_score": best_score})
+            "data": json.dumps({"agent": "critic", "status": "done", "quality_score": composite})
         })
         
     return {
         "reranked_chunks": top_docs,
-        "quality_score": best_score,
+        "quality_score": composite,
         "needs_retry": needs_retry,
         "retry_count": retry_count,
         "error": ""

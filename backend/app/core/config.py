@@ -109,6 +109,27 @@ class Settings(BaseSettings):
     jailbreak_threshold: float = Field(default=0.7, validation_alias=AliasChoices("JAILBREAK_THRESHOLD"))
     topic_relevance_threshold: float = Field(default=0.3, validation_alias=AliasChoices("TOPIC_RELEVANCE_THRESHOLD"))
 
+    token_budget_total: int = Field(default=8000, validation_alias=AliasChoices("TOKEN_BUDGET_TOTAL"))
+    token_budget_system: int = Field(default=1600, validation_alias=AliasChoices("TOKEN_BUDGET_SYSTEM"))
+    token_budget_history: int = Field(default=2400, validation_alias=AliasChoices("TOKEN_BUDGET_HISTORY"))
+    token_budget_context: int = Field(default=3200, validation_alias=AliasChoices("TOKEN_BUDGET_CONTEXT"))
+    token_budget_query: int = Field(default=800, validation_alias=AliasChoices("TOKEN_BUDGET_QUERY"))
+    sliding_window_size: int = Field(default=10, validation_alias=AliasChoices("SLIDING_WINDOW_SIZE"))
+    summary_llm: str = Field(default="groq/llama-3.1-8b", validation_alias=AliasChoices("SUMMARY_LLM"))
+
+    ragas_llm: str = Field(default="groq/llama-3.3-70b-versatile", validation_alias=AliasChoices("RAGAS_LLM"))
+    ragas_faithfulness_threshold: float = Field(default=0.6, validation_alias=AliasChoices("RAGAS_FAITHFULNESS_THRESHOLD"))
+    ragas_answer_relevance_threshold: float = Field(default=0.5, validation_alias=AliasChoices("RAGAS_ANSWER_RELEVANCE_THRESHOLD"))
+    ragas_context_relevance_threshold: float = Field(default=0.4, validation_alias=AliasChoices("RAGAS_CONTEXT_RELEVANCE_THRESHOLD"))
+    ragas_composite_threshold: float = Field(default=0.5, validation_alias=AliasChoices("RAGAS_COMPOSITE_THRESHOLD"))
+    ragas_sample_size: int = Field(default=100, validation_alias=AliasChoices("RAGAS_SAMPLE_SIZE"))
+
+    mlflow_tracking_uri: str | None = Field(default="http://localhost:5000", validation_alias=AliasChoices("MLFLOW_TRACKING_URI"))
+    mlflow_experiment: str = Field(default="researchmind-rag-evaluation", validation_alias=AliasChoices("MLFLOW_EXPERIMENT"))
+
+    langchain_project: str | None = Field(default="researchmind", validation_alias=AliasChoices("LANGCHAIN_PROJECT"))
+    langchain_tracing_v2: bool = Field(default=True, validation_alias=AliasChoices("LANGCHAIN_TRACING_V2"))
+
     @property
     def resolved_redis_url(self) -> str | None:
         # If Upstash REST configuration is present, construct standard TLS TCP URL
@@ -177,6 +198,5 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-
 
 settings = get_settings()

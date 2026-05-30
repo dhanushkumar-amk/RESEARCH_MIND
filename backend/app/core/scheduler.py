@@ -44,6 +44,9 @@ def start_scheduler():
         scheduler.add_job(refresh_url_sources, "cron", hour=2, minute=0, id="url_recrawl_job", replace_existing=True)
         # Add weekly job on Sunday at 3 AM
         scheduler.add_job(refresh_youtube_sources, "cron", day_of_week="sun", hour=3, minute=0, id="youtube_refresh_job", replace_existing=True)
+        # Add daily RAGAS evaluation job at 2 AM
+        from app.evaluation.scheduler import run_nightly_evaluation
+        scheduler.add_job(run_nightly_evaluation, "cron", hour=2, minute=0, id="nightly_evaluation_job", replace_existing=True)
         scheduler.start()
         print("Background scheduler started successfully.")
 

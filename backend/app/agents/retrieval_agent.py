@@ -2,6 +2,7 @@ import logging
 from langchain_core.runnables import RunnableConfig
 from app.agents.state import AgentState
 from app.rag.chain import search_vector_async, search_bm25_async, merge_hybrid_results, get_rerank_compressor
+from app.context.entity_memory import EntityMemory
 
 logger = logging.getLogger("researchmind")
 
@@ -15,6 +16,7 @@ async def retrieval_agent(state: AgentState, config: RunnableConfig) -> dict:
     # Extract user_id and queue from config parameters
     configurable = config.get("configurable", {})
     user_id = configurable.get("user_id")
+    session_id = state.get("session_id", "default")
     queue = configurable.get("queue")
     
     if queue:
@@ -27,8 +29,13 @@ async def retrieval_agent(state: AgentState, config: RunnableConfig) -> dict:
     if not user_id:
         return {"error": "Authentication user_id is missing in config."}
         
+    # Enrich the query with relevant entity facts
+    entity_mem = EntityMemory()
+    enriched_query = await entity_mem.inject_entities(session_id, state["question"])
+    logger.info(f"[Retrieval Agent] Original query: '{state['question']}' -> Enriched query: '{enriched_query}'")
+
     inputs = {
-        "query": state["question"],
+        "query": enriched_query,
         "user_id": user_id,
         "source_ids": state.get("source_ids")
     }
@@ -50,7 +57,7 @@ async def retrieval_agent(state: AgentState, config: RunnableConfig) -> dict:
             reranked_docs = await asyncio.to_thread(
                 compressor.compress_documents, 
                 fused_docs, 
-                state["question"]
+                enriched_query
             )
         else:
             reranked_docs = fused_docs[:5]

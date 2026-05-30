@@ -5,17 +5,11 @@ from langchain_core.runnables import RunnableConfig
 
 from app.agents.state import AgentState
 from app.core.database import get_database
+from app.context.summary_memory import SummaryMemory
+from app.context.sliding_window import SlidingWindowMemory
+from app.context.entity_memory import EntityMemory
 
 logger = logging.getLogger("researchmind")
-
-def extract_entities(text: str) -> list[str]:
-    """Simple rule-based entity extractor (proper nouns, capitalized terms)."""
-    # Find words starting with capital letters, excluding start of sentences
-    candidates = re.findall(r'\b[A-Z][a-zA-Z0-9_]{2,}\b', text)
-    # Deduplicate and filter common words
-    ignored = {"The", "And", "For", "You", "Your", "This", "That", "With", "From", "Answer", "Question"}
-    entities = list(set([c for c in candidates if c not in ignored]))
-    return entities[:10]
 
 async def memory_agent(state: AgentState, config: RunnableConfig) -> dict:
     """
@@ -50,37 +44,32 @@ async def memory_agent(state: AgentState, config: RunnableConfig) -> dict:
     now = datetime.now(timezone.utc)
     
     try:
-        # 1. Insert user query to chat history
-        user_turn = {
-            "user_id": user_id,
-            "session_id": session_id,
-            "role": "user",
-            "content": state["question"],
-            "created_at": now
-        }
-        await db.chat_history.insert_one(user_turn)
+        # Instantiate memory components
+        summary_mem = SummaryMemory()
+        sliding_mem = SlidingWindowMemory()
+        entity_mem = EntityMemory()
+
+        # 1. Save turns to SummaryMemory (auto-summarizing when needed)
+        await summary_mem.add_message(session_id, "human", state["question"])
+        await summary_mem.add_message(session_id, "assistant", state["answer"])
+
+        # 2. Save turns to SlidingWindowMemory
+        await sliding_mem.add_to_window(session_id, {"role": "human", "content": state["question"]})
+        await sliding_mem.add_to_window(session_id, {"role": "assistant", "content": state["answer"]})
+
+        # 3. Extract entities from the interaction and update entity store
+        await entity_mem.extract_entities(session_id, state["question"] + " " + state["answer"])
+        entities_dict = await entity_mem.get_entities(session_id)
+        entities_list = list(entities_dict.keys())
         
-        # 2. Insert assistant answer to chat history
-        assistant_turn = {
-            "user_id": user_id,
-            "session_id": session_id,
-            "role": "assistant",
-            "content": state["answer"],
-            "created_at": now
-        }
-        await db.chat_history.insert_one(assistant_turn)
-        
-        # 3. Extract entities from the interaction
-        entities = extract_entities(state["question"] + " " + state["answer"])
-        
-        # 4. Save/update session metadata and last generated report
+        # 4. Save/update session metadata and last generated report (for compatibility)
         session_metadata = {
             "user_id": user_id,
             "session_id": session_id,
             "last_question": state["question"],
             "last_answer": state["answer"],
             "quality_score": state.get("quality_score", 0.0),
-            "entities": entities,
+            "entities": entities_list,
             "report": state.get("report"),
             "updated_at": now
         }
@@ -92,13 +81,10 @@ async def memory_agent(state: AgentState, config: RunnableConfig) -> dict:
         )
         
         # 5. Fetch updated conversation history to return in the state
-        history_cursor = db.chat_history.find(
-            {"user_id": user_id, "session_id": session_id}
-        ).sort("created_at", 1).limit(20)
-        history_docs = await history_cursor.to_list(length=20)
-        
+        # Return history formatted as requested in SlidingWindowMemory
+        history_docs = await sliding_mem.get_window(session_id)
         conversation_history = [
-            {"role": h["role"], "content": h["content"], "created_at": str(h["created_at"])}
+            {"role": h["role"], "content": h["content"], "created_at": str(now)}
             for h in history_docs
         ]
         
