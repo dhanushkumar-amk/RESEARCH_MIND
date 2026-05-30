@@ -3,7 +3,7 @@ import logging
 import asyncio
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, conint
 from bson import ObjectId
@@ -11,6 +11,7 @@ from bson import ObjectId
 from app.dependencies.auth import get_current_user
 from app.core.database import get_database
 from app.agents.graph import compiled_graph
+from app.security.guard_pipeline import execute_input_guards
 
 logger = logging.getLogger("researchmind")
 
@@ -39,6 +40,7 @@ class FeedbackRequest(BaseModel):
 @router.post("/research")
 async def run_research(
     request: ResearchRequest,
+    fastapi_request: Request,
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -55,6 +57,24 @@ async def run_research(
 
     user_id = str(current_user["_id"])
     session_id = request.session_id
+    ip_address = fastapi_request.client.host if fastapi_request.client else "127.0.0.1"
+
+    # Execute input security guards
+    cleaned_query, blocked, reason = await execute_input_guards(
+        question=query_text,
+        session_id=session_id,
+        user_id=user_id,
+        ip_address=ip_address
+    )
+
+    if blocked:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Security Block: {reason}"
+        )
+
+    # Use the cleaned/PII-redacted question
+    query_text = cleaned_query
 
     async def event_generator():
         queue = asyncio.Queue()
@@ -64,7 +84,8 @@ async def run_research(
             "configurable": {
                 "thread_id": session_id,
                 "user_id": user_id,
-                "queue": queue
+                "queue": queue,
+                "ip_address": ip_address
             }
         }
         

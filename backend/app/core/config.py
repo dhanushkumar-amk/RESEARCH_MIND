@@ -97,6 +97,23 @@ class Settings(BaseSettings):
     reddit_client_id: str | None = Field(default=None, validation_alias=AliasChoices("REDDIT_CLIENT_ID"))
     reddit_client_secret: str | None = Field(default=None, validation_alias=AliasChoices("REDDIT_CLIENT_SECRET"))
     github_token: str | None = Field(default=None, validation_alias=AliasChoices("GITHUB_TOKEN"))
+    redis_url: str | None = Field(default=None, validation_alias=AliasChoices("REDIS_URL"))
+    upstash_redis_rest_url: str | None = Field(default=None, validation_alias=AliasChoices("UPSTASH_REDIS_REST_URL"))
+    upstash_redis_rest_token: str | None = Field(default=None, validation_alias=AliasChoices("UPSTASH_REDIS_REST_TOKEN"))
+    rate_limit_per_minute: int = Field(default=20, validation_alias=AliasChoices("RATE_LIMIT_PER_MINUTE"))
+    rate_limit_per_day: int = Field(default=200, validation_alias=AliasChoices("RATE_LIMIT_PER_DAY"))
+    max_input_tokens: int = Field(default=2000, validation_alias=AliasChoices("MAX_INPUT_TOKENS"))
+    hallucination_threshold: float = Field(default=0.6, validation_alias=AliasChoices("HALLUCINATION_THRESHOLD"))
+    jailbreak_threshold: float = Field(default=0.7, validation_alias=AliasChoices("JAILBREAK_THRESHOLD"))
+    topic_relevance_threshold: float = Field(default=0.3, validation_alias=AliasChoices("TOPIC_RELEVANCE_THRESHOLD"))
+
+    @property
+    def resolved_redis_url(self) -> str | None:
+        # If Upstash REST configuration is present, construct standard TLS TCP URL
+        if self.upstash_redis_rest_url and self.upstash_redis_rest_token:
+            host = self.upstash_redis_rest_url.replace("https://", "").replace("http://", "").strip("/")
+            return f"rediss://default:{self.upstash_redis_rest_token}@{host}:6379"
+        return self.redis_url
 
 
 

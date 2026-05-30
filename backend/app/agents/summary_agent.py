@@ -86,34 +86,79 @@ async def summary_agent(state: AgentState, config: RunnableConfig) -> dict:
     full_answer = ""
     model_used = "groq/llama-3.3-70b-versatile" # default fallback start
     
-    # 4. Invoke LLM and stream tokens
-    try:
-        if queue:
-            # Stream tokens via astream
-            async for chunk in resilient_llm.astream(prompt_value, config=config):
-                # Update model used from chunk metadata if available
-                if chunk.response_metadata and "model_info" in chunk.response_metadata:
-                    model_used = chunk.response_metadata["model_info"].get("name", model_used)
+    # 4. Invoke LLM and stream tokens (with up to 1 retry if output guards fail)
+    ip_address = configurable.get("ip_address", "127.0.0.1")
+    attempt = 0
+    max_attempts = 2
+    current_prompt = prompt_value
+    
+    while attempt < max_attempts:
+        full_answer = ""
+        try:
+            if queue:
+                # If this is a retry, emit a security_retry event to notify client
+                if attempt > 0:
+                    queue.put_nowait({
+                        "event": "security_retry",
+                        "data": json.dumps({"attempt": attempt, "message": "Re-generating response due to security/quality check."})
+                    })
                 
-                token = chunk.content
-                full_answer += token
-                queue.put_nowait({
-                    "event": "token",
-                    "data": json.dumps({"token": token})
-                })
+                # Stream tokens via astream
+                async for chunk in resilient_llm.astream(current_prompt, config=config):
+                    # Update model used from chunk metadata if available
+                    if chunk.response_metadata and "model_info" in chunk.response_metadata:
+                        model_used = chunk.response_metadata["model_info"].get("name", model_used)
+                    
+                    token = chunk.content
+                    full_answer += token
+                    queue.put_nowait({
+                        "event": "token",
+                        "data": json.dumps({"token": token})
+                    })
+            else:
+                response = await resilient_llm.ainvoke(current_prompt, config=config)
+                full_answer = response.content
+                if response.response_metadata and "model_info" in response.response_metadata:
+                    model_used = response.response_metadata["model_info"].get("name", model_used)
+        except Exception as e:
+            logger.error(f"[Summary Agent] LLM invocation failed on attempt {attempt}: {e}", exc_info=True)
+            if attempt == max_attempts - 1:
+                if queue:
+                    queue.put_nowait({
+                        "event": "error",
+                        "data": json.dumps({"message": f"Summary generation failed: {str(e)}"})
+                    })
+                return {"error": str(e)}
+            attempt += 1
+            continue
+
+        # Execute output guards
+        cleaned_answer, blocked, violation_type, reason = await execute_output_guards(
+            response=full_answer,
+            context=context_str,
+            session_id=session_id,
+            user_id=user_id,
+            ip_address=ip_address
+        )
+        
+        if not blocked:
+            full_answer = cleaned_answer
+            break
         else:
-            response = await resilient_llm.ainvoke(prompt_value, config=config)
-            full_answer = response.content
-            if response.response_metadata and "model_info" in response.response_metadata:
-                model_used = response.response_metadata["model_info"].get("name", model_used)
-    except Exception as e:
-        logger.error(f"[Summary Agent] LLM invocation failed: {e}", exc_info=True)
-        if queue:
-            queue.put_nowait({
-                "event": "error",
-                "data": json.dumps({"message": f"Summary generation failed: {str(e)}"})
-            })
-        return {"error": str(e)}
+            logger.warning(f"[Summary Agent] Output guard check failed on attempt {attempt + 1}: {reason}")
+            if attempt < max_attempts - 1:
+                # Modify prompt for the single retry attempt
+                current_prompt = (
+                    f"{prompt_value}\n\n"
+                    f"[System Security Warning: Your previous response was rejected due to {violation_type} ({reason}). "
+                    f"Please generate a new response that is fully grounded in the context, contains no PII, "
+                    f"is safe and non-toxic, and is between 50 and 3000 characters long.]"
+                )
+                attempt += 1
+            else:
+                # Second attempt failed as well, block and return fallback response
+                full_answer = "Security Block: The generated response did not meet our quality or safety standards."
+                break
 
     latency_ms = int((time.time() - start_time) * 1000)
     

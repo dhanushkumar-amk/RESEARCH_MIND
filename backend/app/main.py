@@ -12,9 +12,15 @@ from app.api.routes.auth import router as auth_router
 from app.api.routes.sources import router as sources_router
 from app.api.routes.chat import router as chat_router, init_bm25_retriever
 from app.api.routes.agents import router as agents_router
+from app.api.routes.security import router as security_router
 from app.core.config import settings
 from app.core.database import close_mongo_connection, connect_to_mongo
 from app.core.scheduler import start_scheduler, shutdown_scheduler
+
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import RateLimitMiddleware
+from app.security.rate_limiter import limiter
 
 
 @asynccontextmanager
@@ -35,6 +41,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Register slowapi
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(RateLimitMiddleware)
+
 # CORS middleware to allow connection from the React frontend
 app.add_middleware(
     CORSMiddleware,
@@ -48,6 +59,7 @@ app.include_router(auth_router)
 app.include_router(sources_router)
 app.include_router(chat_router)
 app.include_router(agents_router)
+app.include_router(security_router)
 
 @app.get("/")
 async def root():
