@@ -14,13 +14,21 @@ sync_client = MongoClient(settings.mongodb_uri)
 sync_db = sync_client[settings.resolved_mongodb_database]
 sync_collection = sync_db["chunks"]
 
-vector_store = MongoDBAtlasVectorSearch(
-    collection=sync_collection,
-    embedding=get_embeddings(),
-    index_name="vector_index",
-    text_key="text",
-    embedding_key="embedding"
-)
+_vector_store = None
+
+def get_vector_store() -> MongoDBAtlasVectorSearch:
+    global _vector_store
+    if _vector_store is None:
+        from app.rag.embeddings import get_embeddings
+        _vector_store = MongoDBAtlasVectorSearch(
+            collection=sync_collection,
+            embedding=get_embeddings(),
+            index_name="vector_index",
+            text_key="text",
+            embedding_key="embedding"
+        )
+    return _vector_store
+
 
 # Global documents cache for in-memory BM25 index
 all_documents_cache: List[Document] = []

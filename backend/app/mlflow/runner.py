@@ -22,7 +22,7 @@ from app.api.routes.chat import (
     format_chunks_with_lost_in_the_middle,
     resilient_llm,
     prompt_template,
-    compressor
+    get_compressor
 )
 
 # Import agent nodes
@@ -125,9 +125,10 @@ class ExperimentRunner:
                 
                 # Step 3: Rerank results
                 start_reranking = time.time()
-                if compressor and fused_docs:
+                comp = get_compressor()
+                if comp and fused_docs:
                     reranked_docs = await asyncio.to_thread(
-                        compressor.compress_documents, fused_docs, question
+                        comp.compress_documents, fused_docs, question
                     )
                 else:
                     reranked_docs = fused_docs[:reranker_top_n]

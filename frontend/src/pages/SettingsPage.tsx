@@ -1,17 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/constants';
 import {
-  Settings, User, Cpu, Database, ShieldAlert,
+  Settings, Cpu, Database, ShieldAlert,
   RefreshCw, Bell, Key, Trash2, Shield, Info,
-  CheckCircle
+  CheckCircle, Loader2, AlertCircle
 } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
-import useAuth from '@/hooks/useAuth';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import settingsApi, { UserSettings } from '@/api/settings';
+import { useToast } from '@/hooks/useToast';
 
 const SettingsPage = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { success, error, info } = useToast();
 
   // LLM Gateway settings
   const [primaryModel, setPrimaryModel] = useState('groq-llama-3.3-70b-versatile');
@@ -38,12 +41,78 @@ const SettingsPage = () => {
 
   // Save feedback state
   const [isSaved, setIsSaved] = useState(false);
+  const [isWiping, setIsWiping] = useState(false);
+
+  // 1. Fetch settings from backend
+  const { data: settingsData, isLoading, refetch } = useQuery<UserSettings, Error>({
+    queryKey: ['userSettings'],
+    queryFn: settingsApi.getSettings,
+  });
+
+  // Sync state with fetched settings
+  useEffect(() => {
+    if (settingsData) {
+      if (settingsData.llm_preference) {
+        setPrimaryModel(settingsData.llm_preference);
+      }
+      setEmailAlerts(settingsData.notifications_enabled ?? true);
+    }
+  }, [settingsData]);
+
+  // 2. Update settings mutation
+  const saveMutation = useMutation({
+    mutationFn: settingsApi.updateSettings,
+    onSuccess: (res) => {
+      void queryClient.invalidateQueries({ queryKey: ['userSettings'] });
+      setIsSaved(true);
+      success('Settings saved successfully');
+      setTimeout(() => setIsSaved(false), 3000);
+    },
+    onError: (err: any) => {
+      error(err.response?.data?.detail || err.message || 'Failed to save settings');
+    }
+  });
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
+    void saveMutation.mutateAsync({
+      llm_preference: primaryModel,
+      notifications_enabled: emailAlerts,
+    });
   };
+
+  const handleWipeData = async () => {
+    const confirmed = confirm(
+      'WARNING: This will permanently delete all your documents, search history, RAGAS scores, and session logs. This action is IRREVERSIBLE. Are you sure you want to proceed?'
+    );
+
+    if (confirmed) {
+      setIsWiping(true);
+      info('Purging workspace database...');
+      try {
+        await settingsApi.deleteAllData();
+        success('All database histories and records deleted successfully.');
+        // Clear local credentials and redirect
+        localStorage.clear();
+        window.location.href = '/login';
+      } catch (err: any) {
+        error(err.response?.data?.detail || err.message || 'Wipe operation failed');
+      } finally {
+        setIsWiping(false);
+      }
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <AppShell>
+        <div className="h-[70vh] flex flex-col items-center justify-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-[#16a34a]" />
+          <p className="text-xs font-semibold text-neutral-500">Loading user preferences...</p>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>
@@ -74,7 +143,7 @@ const SettingsPage = () => {
           <div className="bg-gradient-to-r from-green-50/50 to-emerald-50/20 border border-neutral-200 rounded-xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3">
               <div className="bg-[#16a34a] text-white p-2 rounded-lg mt-0.5 shadow-[0_4px_10px_rgba(22,163,74,0.15)] flex-shrink-0">
-                <User className="h-4.5 w-4.5 text-white" />
+                <Cpu className="h-4.5 w-4.5 text-white" />
               </div>
               <div className="space-y-0.5">
                 <h3 className="font-bold text-sm text-neutral-900">Personal Profile Settings</h3>
@@ -105,7 +174,7 @@ const SettingsPage = () => {
                 <select
                   value={primaryModel}
                   onChange={(e) => setPrimaryModel(e.target.value)}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-705 cursor-pointer"
+                  className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-705 cursor-pointer"
                 >
                   <option value="groq-llama-3.3-70b-versatile">Llama 3.3 70B Versatile (Groq - Default)</option>
                   <option value="gemini-1.5-pro">Gemini 1.5 Pro (Google)</option>
@@ -120,7 +189,7 @@ const SettingsPage = () => {
                   type="number"
                   value={maxTokens}
                   onChange={(e) => setMaxTokens(parseInt(e.target.value) || 2048)}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-900"
+                  className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-900"
                 />
               </div>
             </div>
@@ -151,7 +220,7 @@ const SettingsPage = () => {
                   type="number"
                   value={chunkSize}
                   onChange={(e) => setChunkSize(parseInt(e.target.value) || 256)}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-900"
+                  className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-900"
                 />
               </div>
 
@@ -161,7 +230,7 @@ const SettingsPage = () => {
                   type="number"
                   value={chunkOverlap}
                   onChange={(e) => setChunkOverlap(parseInt(e.target.value) || 10)}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-900"
+                  className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-900"
                 />
               </div>
 
@@ -171,7 +240,7 @@ const SettingsPage = () => {
                   type="number"
                   value={kValue}
                   onChange={(e) => setKValue(parseInt(e.target.value) || 3)}
-                  className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-900"
+                  className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-900"
                 />
               </div>
             </div>
@@ -220,7 +289,7 @@ const SettingsPage = () => {
               <label className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl border border-neutral-100 cursor-pointer select-none">
                 <div className="space-y-0.5 pr-2">
                   <p className="text-xs font-bold text-neutral-750">LLM Guardrails</p>
-                  <p className="text-[9px] text-neutral-450 leading-tight font-semibold">Enforces safe output bounds</p>
+                  <p className="text-[9px] text-neutral-455 leading-tight font-semibold">Enforces safe output bounds</p>
                 </div>
                 <input
                   type="checkbox"
@@ -233,7 +302,7 @@ const SettingsPage = () => {
               <label className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl border border-neutral-100 cursor-pointer select-none">
                 <div className="space-y-0.5 pr-2">
                   <p className="text-xs font-bold text-neutral-750">PII De-identification</p>
-                  <p className="text-[9px] text-neutral-450 leading-tight font-semibold">Scrubs names, emails, phones</p>
+                  <p className="text-[9px] text-neutral-455 leading-tight font-semibold">Scrubs names, emails, phones</p>
                 </div>
                 <input
                   type="checkbox"
@@ -303,8 +372,8 @@ const SettingsPage = () => {
 
               <div className="flex items-center justify-between py-2">
                 <div className="space-y-0.5">
-                  <p className="text-xs font-bold text-neutral-750">Email Alerts</p>
-                  <p className="text-[10px] text-neutral-450 font-semibold">Get summaries of compiled research reports</p>
+                  <p className="text-xs font-bold text-neutral-755">Email Alerts</p>
+                  <p className="text-[10px] text-neutral-455 font-semibold">Get summaries of compiled research reports</p>
                 </div>
                 <input
                   type="checkbox"
@@ -331,11 +400,14 @@ const SettingsPage = () => {
                   type="password"
                   value="sk-llmgate-f823a9d72b2203e0c0"
                   readOnly
-                  className="flex-1 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs text-neutral-500 font-mono"
+                  className="flex-1 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-xs text-neutral-500 font-mono animate-pulse"
                 />
                 <button
                   type="button"
-                  onClick={() => navigator.clipboard.writeText('sk-llmgate-f823a9d72b2203e0c0')}
+                  onClick={() => {
+                    void navigator.clipboard.writeText('sk-llmgate-f823a9d72b2203e0c0');
+                    info('Copied sk-llmgate key to clipboard');
+                  }}
                   className="bg-white border border-neutral-200 hover:border-neutral-350 text-neutral-705 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"
                 >
                   Copy
@@ -359,15 +431,11 @@ const SettingsPage = () => {
             <div className="flex flex-wrap gap-2.5">
               <button
                 type="button"
-                className="bg-white border border-red-200 hover:bg-red-50 text-red-700 font-bold px-4 py-2 rounded-lg text-xs cursor-pointer transition-colors"
+                onClick={handleWipeData}
+                disabled={isWiping}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-lg text-xs cursor-pointer transition-colors shadow-sm disabled:opacity-50"
               >
-                Clear Database Cache
-              </button>
-              <button
-                type="button"
-                className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-lg text-xs cursor-pointer transition-colors shadow-sm"
-              >
-                Reset Account
+                {isWiping ? 'Wiping Database...' : 'Wipe All Workspace Data'}
               </button>
             </div>
           </div>
@@ -376,9 +444,10 @@ const SettingsPage = () => {
           <div className="flex justify-end pt-3">
             <button
               type="submit"
-              className="bg-neutral-950 hover:bg-neutral-850 text-white font-bold px-6 py-2.5 rounded-xl text-xs shadow-sm transition-all cursor-pointer"
+              disabled={saveMutation.isPending}
+              className="bg-neutral-950 hover:bg-neutral-850 text-white font-bold px-6 py-2.5 rounded-xl text-xs shadow-sm transition-all cursor-pointer disabled:opacity-50"
             >
-              Save Configurations
+              {saveMutation.isPending ? 'Saving...' : 'Save Configurations'}
             </button>
           </div>
 

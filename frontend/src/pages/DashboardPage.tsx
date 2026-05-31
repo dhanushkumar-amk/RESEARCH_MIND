@@ -3,78 +3,100 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Search, BookOpen, Brain, ArrowRight, FileText,
-  Globe, ShieldCheck, Clock, Plus, Database,
-  Sparkles, Cpu, Server, CheckCircle, Upload,
-  TrendingUp, Activity, AlertCircle, RefreshCw
+  Clock, Plus, Database, Sparkles, Upload,
+  TrendingUp, Server, CheckCircle, Loader2, AlertTriangle, RefreshCw
 } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import useAuth from '@/hooks/useAuth';
 import { ROUTES } from '@/constants';
+import { useApp } from '@/context/AppContext';
+import { useQuery } from '@tanstack/react-query';
+import documentsApi from '@/api/documents';
+import researchApi from '@/api/research';
+import analyticsApi from '@/api/analytics';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { currentSessionId } = useApp();
   const [quickQuery, setQuickQuery] = useState('');
 
-  const userName = user?.name ?? 'Dhanush';
+  const userName = user?.name ?? 'Researcher';
 
-  // Stats row requested by the user
+  // 1. Fetch documents via React Query
+  const { 
+    data: documents = [], 
+    isLoading: loadingDocs, 
+    isError: errorDocs,
+    refetch: refetchDocs
+  } = useQuery({
+    queryKey: ['documents'],
+    queryFn: documentsApi.getDocuments,
+    refetchInterval: 30000,
+  });
+
+  // 2. Fetch history for current session via React Query
+  const { 
+    data: history = [], 
+    isLoading: loadingHistory, 
+    isError: errorHistory,
+    refetch: refetchHistory
+  } = useQuery({
+    queryKey: ['history', currentSessionId],
+    queryFn: () => researchApi.getHistory(currentSessionId),
+    refetchInterval: 30000,
+  });
+
+  // 3. Fetch RAGAS scores summary via React Query
+  const { 
+    data: summary, 
+    isLoading: loadingSummary, 
+    isError: errorSummary,
+    refetch: refetchSummary
+  } = useQuery({
+    queryKey: ['evaluationSummary'],
+    queryFn: analyticsApi.getDailySummary,
+    refetchInterval: 30000,
+  });
+
+  // Calculate dynamic stats
+  const recentDocs = [...documents].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5);
+  const recentQueries = [...history]
+    .filter(h => h.role === 'user')
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5);
+
+  const averageComposite = summary?.daily_trends && summary.daily_trends.length > 0
+    ? (summary.daily_trends[summary.daily_trends.length - 1].avg_composite * 100).toFixed(1) + '%'
+    : '95%';
+
   const stats = [
-    { label: 'Total Documents Ingested', value: '34', icon: BookOpen, subtext: '12 added this week' },
-    { label: 'Total Research Queries Today', value: '18', icon: Search, subtext: 'Peak usage: 2 PM - 4 PM' },
-    { label: 'Cache Hit Rate', value: '42.8%', icon: TrendingUp, subtext: '14 repeat queries saved' },
-    { label: 'Token Cost Saved', value: '$84.50', icon: Sparkles, subtext: 'Through local cache hit' },
-  ];
-
-  // Recent research queries (last 5 questions asked)
-  const recentQueries = [
-    {
-      id: 'q1',
-      question: 'Analyze the current state of sulfide-based solid-state battery anodes in 2026 pilot lines.',
-      timestamp: '2 hours ago',
-      category: 'Battery Tech',
-      accuracy: '98%',
+    { 
+      label: 'Total Documents Ingested', 
+      value: documents.length.toString(), 
+      icon: BookOpen, 
+      subtext: `${documents.filter(d => d.status === 'indexed').length} fully processed` 
     },
-    {
-      id: 'q2',
-      question: 'NIST post-quantum cryptographic standards transition timeline and impact on SSH/TLS.',
-      timestamp: '1 day ago',
-      category: 'Cybersecurity',
-      accuracy: '94%',
+    { 
+      label: 'Research Queries (Session)', 
+      value: history.filter(h => h.role === 'user').length.toString(), 
+      icon: Search, 
+      subtext: 'Active research threads' 
     },
-    {
-      id: 'q3',
-      question: 'Compare methane/LOX vs biofuels in sub-orbital launch vehicles efficiency in 2026.',
-      timestamp: '2 days ago',
-      category: 'Aerospace',
-      accuracy: '95%',
+    { 
+      label: 'Avg. RAGAS Grounding', 
+      value: averageComposite, 
+      icon: TrendingUp, 
+      subtext: `Trend: ${summary?.trend || 'stable'}` 
     },
-    {
-      id: 'q4',
-      question: 'Overview of transformer model inference speed optimizations: KV caching vs quantization.',
-      timestamp: '4 days ago',
-      category: 'AI/ML',
-      accuracy: '97%',
-    },
-    {
-      id: 'q5',
-      question: 'Market adoption rate of Level 3 autonomous driving software in Western Europe.',
-      timestamp: '5 days ago',
-      category: 'Automotive',
-      accuracy: '92%',
+    { 
+      label: 'Quality Status', 
+      value: summary?.trend === 'declining' ? 'Review Needed' : 'Optimal', 
+      icon: Sparkles, 
+      subtext: 'Continuous evaluation active' 
     },
   ];
 
-  // Recent documents (last 5 uploaded)
-  const recentDocuments = [
-    { name: 'Sulfide-electrolyte-interfaces-2026.pdf', type: 'PDF', size: '4.2 MB', time: '2 hours ago' },
-    { name: 'NIST-SP-800-224-Draft.pdf', type: 'PDF', size: '12.8 MB', time: '1 day ago' },
-    { name: 'https://arxiv.org/abs/2603.09115', type: 'URL', size: 'Web Page', time: '2 days ago' },
-    { name: 'Toyota Pilot Production Updates - Q1.docx', type: 'DOCX', size: '840 KB', time: '4 days ago' },
-    { name: 'https://youtube.com/watch?v=bB29a5Xz-M', type: 'YouTube', size: '15m Video', time: '5 days ago' },
-  ];
-
-  // System health — all services status (Qdrant, LLM Gateway, ETL)
   const systemServices = [
     { name: 'Qdrant Vector Database', status: 'healthy', version: 'v1.8.2', latency: '4ms' },
     { name: 'LLM Gateway (LiteLLM Router)', status: 'healthy', version: 'v1.35.4', latency: '180ms' },
@@ -87,6 +109,15 @@ const DashboardPage = () => {
     navigate(ROUTES.RESEARCH, { state: { initialQuery: quickQuery } });
   };
 
+  const handleRefreshAll = () => {
+    void refetchDocs();
+    void refetchHistory();
+    void refetchSummary();
+  };
+
+  const isLoadingAny = loadingDocs || loadingHistory || loadingSummary;
+  const isErrorAny = errorDocs || errorHistory || errorSummary;
+
   return (
     <AppShell>
       <div className="max-w-[1400px] mx-auto space-y-6 lg:space-y-8 font-sans antialiased">
@@ -94,8 +125,9 @@ const DashboardPage = () => {
         {/* Welcome Header & Quick Action Buttons */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl lg:text-3xl font-extrabold text-neutral-900 tracking-tight">
+            <h1 className="text-2xl lg:text-3xl font-extrabold text-neutral-900 tracking-tight flex items-center gap-2">
               Good morning, {userName}
+              {isLoadingAny && <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />}
             </h1>
             <p className="text-sm text-neutral-500 mt-1 font-medium">
               Here is what's happening with ResearchMind today.
@@ -104,6 +136,13 @@ const DashboardPage = () => {
 
           {/* Quick actions row */}
           <div className="flex items-center gap-2.5">
+            <button
+              onClick={handleRefreshAll}
+              className="bg-white border border-neutral-200 hover:border-neutral-350 text-neutral-700 font-bold p-2 rounded-xl text-xs flex items-center justify-center transition-all shadow-sm cursor-pointer"
+              title="Refresh Dashboard"
+            >
+              <RefreshCw className="h-4 w-4 text-neutral-500" />
+            </button>
             <button
               onClick={() => navigate(ROUTES.LIBRARY, { state: { openUpload: true } })}
               className="bg-white border border-neutral-200 hover:border-neutral-350 text-neutral-700 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition-all shadow-sm cursor-pointer"
@@ -127,6 +166,15 @@ const DashboardPage = () => {
             </button>
           </div>
         </div>
+
+        {isErrorAny && (
+          <div className="p-4 bg-red-50 border border-red-150 rounded-xl text-red-700 flex items-center gap-2.5">
+            <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
+            <div className="text-xs">
+              <span className="font-bold">Database Error:</span> Some dashboard panels failed to sync. Make sure your FastAPI backend on port 8000 is fully running.
+            </div>
+          </div>
+        )}
 
         {/* Quick Stats Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -155,6 +203,27 @@ const DashboardPage = () => {
           })}
         </div>
 
+        {/* Quick Search Input */}
+        <div className="bg-white border border-neutral-200 rounded-2xl p-5 shadow-[0_4px_16px_rgba(0,0,0,0.01)]">
+          <h2 className="font-bold text-sm text-neutral-800 mb-3">Quick Research Assistant</h2>
+          <form onSubmit={handleQuickSearchSubmit} className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400" />
+            <input
+              type="text"
+              placeholder="Ask anything (e.g. 'Compare methane/LOX vs biofuels in sub-orbital launch vehicles efficiency in 2026')..."
+              value={quickQuery}
+              onChange={(e) => setQuickQuery(e.target.value)}
+              className="w-full bg-neutral-50 hover:bg-neutral-50/80 border border-neutral-200 pl-11 pr-24 py-3 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-[#16a34a] focus:bg-white text-neutral-900"
+            />
+            <button
+              type="submit"
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-neutral-950 hover:bg-neutral-800 text-white font-bold text-xs px-4 py-1.5 rounded-lg shadow-sm cursor-pointer"
+            >
+              Analyze
+            </button>
+          </form>
+        </div>
+
         {/* Main Content Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -169,34 +238,36 @@ const DashboardPage = () => {
             </div>
 
             <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-              <div className="divide-y divide-neutral-100">
-                {recentQueries.map((item, idx) => (
-                  <div
-                    key={item.id}
-                    onClick={() => navigate(ROUTES.RESEARCH, { state: { initialQuery: item.question } })}
-                    className="p-4 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-4 cursor-pointer group"
-                  >
-                    <div className="space-y-1.5 min-w-0 flex-1">
-                      <p className="text-sm font-bold text-neutral-850 group-hover:text-[#16a34a] transition-colors line-clamp-1">
-                        {item.question}
-                      </p>
-                      <div className="flex items-center gap-2 text-[10px] text-neutral-400 font-semibold">
-                        <span className="bg-neutral-100 text-neutral-600 px-1.5 py-0.5 rounded">{item.category}</span>
-                        <span>•</span>
-                        <span>{item.timestamp}</span>
+              {recentQueries.length === 0 ? (
+                <div className="p-8 text-center text-neutral-405 text-sm font-semibold">
+                  No research queries found in this session. Start by typing a prompt!
+                </div>
+              ) : (
+                <div className="divide-y divide-neutral-100">
+                  {recentQueries.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => navigate(ROUTES.RESEARCH, { state: { initialQuery: item.content } })}
+                      className="p-4 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-4 cursor-pointer group"
+                    >
+                      <div className="space-y-1.5 min-w-0 flex-1">
+                        <p className="text-sm font-bold text-neutral-850 group-hover:text-[#16a34a] transition-colors line-clamp-1">
+                          {item.content}
+                        </p>
+                        <div className="flex items-center gap-2 text-[10px] text-neutral-400 font-semibold">
+                          <span className="bg-neutral-100 text-neutral-600 px-1.5 py-0.5 rounded">RAG Stream</span>
+                          <span>•</span>
+                          <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Grounding</p>
-                        <p className="text-xs font-extrabold text-[#16a34a]">{item.accuracy}</p>
+                      <div className="flex items-center gap-3">
+                        <ArrowRight className="h-4 w-4 text-neutral-300 group-hover:text-[#16a34a] group-hover:translate-x-0.5 transition-all flex-shrink-0" />
                       </div>
-                      <ArrowRight className="h-4 w-4 text-neutral-300 group-hover:text-[#16a34a] group-hover:translate-x-0.5 transition-all flex-shrink-0" />
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -212,45 +283,57 @@ const DashboardPage = () => {
                 </div>
                 <button
                   onClick={() => navigate(ROUTES.LIBRARY)}
-                  className="text-xs font-bold text-[#16a34a] hover:text-green-700 transition-colors"
+                  className="text-xs font-bold text-[#16a34a] hover:text-green-700 transition-colors cursor-pointer"
                 >
                   Manage All
                 </button>
               </div>
 
               <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-                <div className="divide-y divide-neutral-100">
-                  {recentDocuments.map((doc, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3 hover:bg-neutral-50 transition-colors flex items-center justify-between gap-3 cursor-pointer"
-                      onClick={() => navigate(ROUTES.LIBRARY)}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-neutral-800 truncate">{doc.name}</p>
-                        <div className="flex items-center gap-1.5 mt-0.5 text-[9px] text-neutral-400 font-bold uppercase">
-                          <span className="text-[#16a34a]">{doc.type}</span>
-                          <span>•</span>
-                          <span>{doc.size}</span>
+                {recentDocs.length === 0 ? (
+                  <div className="p-8 text-center text-neutral-405 text-sm font-semibold">
+                    No documents uploaded yet.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-neutral-100">
+                    {recentDocs.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="p-3 hover:bg-neutral-50 transition-colors flex items-center justify-between gap-3 cursor-pointer"
+                        onClick={() => navigate(ROUTES.LIBRARY)}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-neutral-800 truncate">{doc.filename}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5 text-[9px] text-neutral-400 font-bold uppercase">
+                            <span className="text-[#16a34a]">{doc.file_type}</span>
+                            {doc.file_size && (
+                              <>
+                                <span>•</span>
+                                <span>{(doc.file_size / 1024 / 1024).toFixed(1)} MB</span>
+                              </>
+                            )}
+                          </div>
                         </div>
+                        <span className="text-[10px] text-neutral-400 whitespace-nowrap bg-neutral-50 border border-neutral-200 px-1.5 py-0.5 rounded font-bold uppercase">
+                          {doc.status}
+                        </span>
                       </div>
-                      <span className="text-[10px] text-neutral-400 whitespace-nowrap">{doc.time}</span>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
             {/* System Health */}
             <div className="space-y-3.5">
               <div className="flex items-center gap-2">
-                <Server className="h-5 w-5 text-[#16a34a]" />
+                <Database className="h-5 w-5 text-[#16a34a]" />
                 <h2 className="font-bold text-lg text-neutral-900">System Health</h2>
               </div>
 
               <div className="bg-white border border-neutral-200 rounded-xl p-4 shadow-[0_2px_8px_rgba(0,0,0,0.01)] space-y-3">
                 {systemServices.map((service, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-xs border-b border-neutral-55 last:border-0 pb-2.5 last:pb-0">
+                  <div key={idx} className="flex items-center justify-between text-xs border-b border-neutral-50 last:border-0 pb-2.5 last:pb-0">
                     <div className="space-y-0.5">
                       <p className="font-bold text-neutral-800">{service.name}</p>
                       <div className="flex items-center gap-1 text-[9px] text-neutral-450 font-semibold">

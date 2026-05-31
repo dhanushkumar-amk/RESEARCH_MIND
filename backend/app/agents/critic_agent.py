@@ -139,6 +139,5 @@ async def critic_agent(state: AgentState, config: RunnableConfig) -> dict:
         "reranked_chunks": top_docs,
         "quality_score": composite,
         "needs_retry": needs_retry,
-        "retry_count": retry_count,
-        "error": ""
+        "retry_count": retry_count
     }

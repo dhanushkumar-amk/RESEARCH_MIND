@@ -1,158 +1,81 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { documentService, type SourceResponse } from '@/services/documentService';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import documentsApi, { DocumentSource } from '@/api/documents';
+import { useToast } from '@/hooks/useToast';
 
 export function useDocuments() {
-  const { accessToken } = useAuth();
-  const [documents, setDocuments] = useState<SourceResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Keep track of polling interval
-  const pollIntervalRef = useRef<any>(null);
+  const queryClient = useQueryClient();
+  const { success, error: toastError } = useToast();
 
-  const fetchDocuments = useCallback(async () => {
-    if (!accessToken) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await documentService.listSources(accessToken);
-      setDocuments(data);
-    } catch (err: any) {
-      setError(err?.message || 'Failed to fetch documents.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [accessToken]);
-
-  // Ingestion status update function
-  const checkProcessingStatus = useCallback(async () => {
-    if (!accessToken) return;
-    
-    // Find documents that are currently processing
-    const processingIds = documents
-      .filter((d) => ['uploaded', 'extracting', 'chunking', 'embedding', 'indexing'].includes(d.status))
-      .map((d) => d.id);
-
-    if (processingIds.length === 0) {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
-      }
-      return;
-    }
-
-    try {
-      const updatedDocs = await Promise.all(
-        processingIds.map((id) => documentService.getSourceStatus(id, accessToken))
+  // 1. Fetch and dynamically poll using React Query refetchInterval
+  const { data: documents = [], isLoading, error, refetch } = useQuery<DocumentSource[], Error>({
+    queryKey: ['documents'],
+    queryFn: documentsApi.getDocuments,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data) return false;
+      const hasProcessing = data.some(d => 
+        ['uploaded', 'extracting', 'chunking', 'embedding', 'indexing'].includes(d.status)
       );
-
-      setDocuments((prev) =>
-        prev.map((doc) => {
-          const updated = updatedDocs.find((u) => u.id === doc.id);
-          return updated ? updated : doc;
-        })
-      );
-    } catch (err) {
-      console.error('Error polling document status:', err);
+      // Poll every 3 seconds if any doc is processing
+      return hasProcessing ? 3000 : false;
     }
-  }, [accessToken, documents]);
+  });
 
-  // Poll processing documents
-  useEffect(() => {
-    const processingDocs = documents.some((d) =>
-      ['uploaded', 'extracting', 'chunking', 'embedding', 'indexing'].includes(d.status)
-    );
-
-    if (processingDocs) {
-      if (!pollIntervalRef.current) {
-        pollIntervalRef.current = setInterval(() => {
-          void checkProcessingStatus();
-        }, 3000); // Poll every 3 seconds
-      }
-    } else {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
-      }
+  // 2. Mutations using Axios endpoints
+  const uploadMutation = useMutation({
+    mutationFn: documentsApi.uploadFile,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['documents'] });
+      success('Upload complete - indexing started');
+    },
+    onError: (err: any) => {
+      toastError(err.response?.data?.detail || err.message || 'Failed to upload document');
     }
+  });
 
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
-      }
-    };
-  }, [documents, checkProcessingStatus]);
-
-  // Fetch documents on mount or token change
-  useEffect(() => {
-    void fetchDocuments();
-  }, [fetchDocuments]);
-
-  // Upload document
-  const upload = async (file: File) => {
-    if (!accessToken) throw new Error('Not authenticated');
-    setError(null);
-    try {
-      const newDoc = await documentService.uploadDocument(file, accessToken);
-      setDocuments((prev) => [newDoc, ...prev]);
-      return newDoc;
-    } catch (err: any) {
-      setError(err?.message || 'Failed to upload document.');
-      throw err;
+  const urlMutation = useMutation({
+    mutationFn: documentsApi.ingestURL,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['documents'] });
+      success('URL scraping submitted');
+    },
+    onError: (err: any) => {
+      toastError(err.response?.data?.detail || err.message || 'Failed to ingest URL');
     }
-  };
+  });
 
-  // Ingest URL
-  const ingestUrl = async (url: string) => {
-    if (!accessToken) throw new Error('Not authenticated');
-    setError(null);
-    try {
-      const newDoc = await documentService.ingestUrl(url, accessToken);
-      setDocuments((prev) => [newDoc, ...prev]);
-      return newDoc;
-    } catch (err: any) {
-      setError(err?.message || 'Failed to ingest URL.');
-      throw err;
+  const youtubeMutation = useMutation({
+    mutationFn: documentsApi.ingestYouTube,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['documents'] });
+      success('YouTube transcript parser queued');
+    },
+    onError: (err: any) => {
+      toastError(err.response?.data?.detail || err.message || 'Failed to ingest YouTube video');
     }
-  };
+  });
 
-  // Ingest YouTube
-  const ingestYoutube = async (url: string) => {
-    if (!accessToken) throw new Error('Not authenticated');
-    setError(null);
-    try {
-      const newDoc = await documentService.ingestYoutube(url, accessToken);
-      setDocuments((prev) => [newDoc, ...prev]);
-      return newDoc;
-    } catch (err: any) {
-      setError(err?.message || 'Failed to ingest YouTube video.');
-      throw err;
+  const deleteMutation = useMutation({
+    mutationFn: documentsApi.deleteDocument,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['documents'] });
+      success('Document deleted successfully');
+    },
+    onError: (err: any) => {
+      toastError(err.response?.data?.detail || err.message || 'Failed to delete document');
     }
-  };
-
-  // Delete document
-  const deleteDocument = async (sourceId: string) => {
-    if (!accessToken) throw new Error('Not authenticated');
-    setError(null);
-    try {
-      await documentService.deleteSource(sourceId, accessToken);
-      setDocuments((prev) => prev.filter((d) => d.id !== sourceId));
-    } catch (err: any) {
-      setError(err?.message || 'Failed to delete document.');
-      throw err;
-    }
-  };
+  });
 
   return {
     documents,
     isLoading,
-    error,
-    refreshDocuments: fetchDocuments,
-    uploadDocument: upload,
-    ingestUrl,
-    ingestYoutube,
-    deleteDocument,
+    error: error ? error.message : null,
+    refreshDocuments: refetch,
+    uploadDocument: uploadMutation.mutateAsync,
+    ingestUrl: urlMutation.mutateAsync,
+    ingestYoutube: youtubeMutation.mutateAsync,
+    deleteDocument: deleteMutation.mutateAsync
   };
 }
+
+export default useDocuments;

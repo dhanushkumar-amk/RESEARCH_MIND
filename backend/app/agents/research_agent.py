@@ -286,6 +286,5 @@ async def research_agent(state: AgentState, config: RunnableConfig) -> dict:
         })
         
     return {
-        "web_results": top_results,
-        "error": ""
+        "web_results": top_results
     }

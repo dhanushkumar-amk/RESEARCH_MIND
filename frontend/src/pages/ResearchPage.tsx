@@ -5,11 +5,15 @@ import {
   Search, Brain, Send, FileText, CheckCircle2,
   ThumbsUp, ThumbsDown, RotateCcw, ChevronRight,
   Database, Globe, ShieldCheck, Sparkles, Filter,
-  BookOpen, HelpCircle, Loader2, Play
+  BookOpen, HelpCircle, Loader2, Play, Plus
 } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import { ROUTES } from '@/constants';
-import { useChat } from '@/hooks/useChat';
+import { useSSE } from '@/hooks/useSSE';
+import { researchApi } from '@/api/research';
+import { useToast } from '@/hooks/useToast';
+import { useApp } from '@/context/AppContext';
+import { useQuery } from '@tanstack/react-query';
 
 interface Source {
   id: string;
@@ -35,30 +39,105 @@ interface Message {
 const ResearchPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { success, error, info } = useToast();
+  const { documents, refreshDocuments } = useApp();
+
+  const [sessionId, setSessionId] = useState<string>(() => crypto.randomUUID());
   const [query, setQuery] = useState('');
   const [selectedSourceFilter, setSelectedSourceFilter] = useState<'all' | 'specific'>('all');
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
 
-  // Multi-agent lifecycle status
-  const [activeAgent, setActiveAgent] = useState<'idle' | 'retrieval' | 'research' | 'critic' | 'summary'>('idle');
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // 1. Hook up custom useSSE hook
   const {
-    messages,
-    isProcessing,
-    error: chatError,
-    sendMessage,
-    clearChat
-  } = useChat();
+    message: streamContent,
+    sources: streamSources,
+    report: streamReport,
+    agentStatus,
+    isStreaming,
+    isComplete,
+    error: streamError,
+    startStream,
+    cleanup
+  } = useSSE();
 
-  // Available specific docs in library for selector
-  const availableDocs = [
-    { id: 'doc1', name: 'Sulfide-electrolyte-interfaces-2026.pdf', size: '4.2 MB' },
-    { id: 'doc2', name: 'NIST-SP-800-224-Draft.pdf', size: '12.8 MB' },
-    { id: 'doc3', name: 'Toyota Pilot Production Updates - Q1.docx', size: '840 KB' },
-  ];
+  // 2. Fetch history of session on mount/sessionId change using React Query
+  const { data: history = [], refetch: refetchHistory } = useQuery({
+    queryKey: ['researchHistory', sessionId],
+    queryFn: () => researchApi.getHistory(sessionId),
+    enabled: !!sessionId
+  });
 
-  // Ingest state if navigated from dashboard quick search
+  // Sync React Query history with page messages state
+  useEffect(() => {
+    if (history && history.length > 0) {
+      const formatted: Message[] = history.map(h => ({
+        role: h.role,
+        content: h.content,
+        // Since SSE metadata was processed in backend and reports are generated separately,
+        // we can fetch report details or keep them empty in history view
+      }));
+      setMessages(formatted);
+    } else {
+      setMessages([]);
+    }
+  }, [history]);
+
+  // Sync ongoing SSE stream tokens to the messages list
+  useEffect(() => {
+    if (isStreaming) {
+      setMessages(prev => {
+        const next = [...prev];
+        const last = next[next.length - 1];
+        if (last && last.role === 'assistant') {
+          last.content = streamContent;
+          last.isStreaming = true;
+          
+          if (!last.agents) last.agents = [];
+          const agentLabel = agentStatus.charAt(0).toUpperCase() + agentStatus.slice(1) + ' Agent';
+          if (agentStatus !== 'idle' && !last.agents.includes(agentLabel)) {
+            last.agents = [...last.agents, agentLabel];
+          }
+        }
+        return next;
+      });
+    }
+  }, [streamContent, agentStatus, isStreaming]);
+
+  // Sync stream completion states
+  useEffect(() => {
+    if (isComplete) {
+      setMessages(prev => {
+        const next = [...prev];
+        const last = next[next.length - 1];
+        if (last && last.role === 'assistant') {
+          last.content = streamContent;
+          last.isStreaming = false;
+          last.sources = streamSources;
+          
+          if (streamReport?.related_topics) {
+            last.suggestions = streamReport.related_topics.map((topic: string, index: number) => ({
+              id: `sug_${index}`,
+              question: topic
+            }));
+          }
+        }
+        return next;
+      });
+      success('Research query compilation complete');
+      void refetchHistory();
+    }
+  }, [isComplete, streamSources, streamReport, refetchHistory]);
+
+  useEffect(() => {
+    if (streamError) {
+      error(streamError);
+    }
+  }, [streamError]);
+
+  // Handle incoming query from location state (dashboard quick action)
   useEffect(() => {
     const state = location.state as { initialQuery?: string };
     if (state?.initialQuery) {
@@ -67,38 +146,47 @@ const ResearchPage = () => {
     }
   }, [location.state]);
 
-  // Scroll to bottom on new messages
+  // Auto-scroll to bottom of chat
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, activeAgent]);
+  }, [messages, agentStatus]);
+
+  // Refresh user documents on component mount
+  useEffect(() => {
+    void refreshDocuments();
+  }, [refreshDocuments]);
 
   const submitQuery = async (queryText: string) => {
-    if (!queryText.trim() || isProcessing) return;
+    if (!queryText.trim() || isStreaming) return;
 
     setQuery('');
     
-    // Simulate agent steps transitions
-    setActiveAgent('retrieval');
-    const t1 = setTimeout(() => setActiveAgent('research'), 650);
-    const t2 = setTimeout(() => setActiveAgent('critic'), 1300);
-    const t3 = setTimeout(() => setActiveAgent('summary'), 1950);
-    const t4 = setTimeout(() => {
-      setActiveAgent('idle');
-    }, 2600);
+    // Append User Query & initial Assistant message placeholder
+    setMessages(prev => [
+      ...prev,
+      { role: 'user', content: queryText.trim() },
+      { role: 'assistant', content: '', agents: [], isStreaming: true }
+    ]);
 
     try {
-      await sendMessage(queryText.trim(), 'default');
-    } catch (err) {
-      console.error(err);
-    } finally {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
-      setActiveAgent('idle');
+      await startStream('/api/agents/research', {
+        question: queryText.trim(),
+        session_id: sessionId,
+        source_ids: selectedSourceFilter === 'specific' ? selectedDocs : []
+      });
+    } catch (err: any) {
+      error(err.message || 'Streaming failed');
     }
+  };
+
+  const handleNewChat = () => {
+    cleanup();
+    const newId = crypto.randomUUID();
+    setSessionId(newId);
+    setMessages([]);
+    success('Started new research session');
   };
 
   const handleDocToggle = (docId: string) => {
@@ -107,12 +195,30 @@ const ResearchPage = () => {
     );
   };
 
+  const handleFeedback = async (rating: number, comment: string) => {
+    try {
+      await researchApi.submitFeedback(sessionId, rating, comment);
+      success('Thank you for your feedback!');
+    } catch (err: any) {
+      error('Failed to submit feedback');
+    }
+  };
+
   return (
     <AppShell>
       <div className="max-w-[1200px] mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6 font-sans antialiased h-[calc(100vh-7rem)]">
 
-        {/* Left Side: Controls, Document Filters & History (1 Col) */}
+        {/* Left Side: Controls, Document Filters & History */}
         <div className="lg:col-span-1 flex flex-col gap-5 h-full overflow-y-auto pr-1">
+
+          {/* New Chat Button */}
+          <button
+            onClick={handleNewChat}
+            className="w-full bg-[#16a34a] hover:bg-green-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            <span>New Research Chat</span>
+          </button>
 
           {/* Source Selector Panel */}
           <div className="bg-white border border-neutral-200 rounded-xl p-4 space-y-4 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
@@ -129,7 +235,7 @@ const ResearchPage = () => {
                     : 'text-neutral-500 hover:text-neutral-800'
                   }`}
               >
-                All Documents
+                All Library
               </button>
               <button
                 onClick={() => setSelectedSourceFilter('specific')}
@@ -138,7 +244,7 @@ const ResearchPage = () => {
                     : 'text-neutral-500 hover:text-neutral-800'
                   }`}
               >
-                Specific (Select)
+                Select Specific
               </button>
             </div>
 
@@ -150,7 +256,7 @@ const ResearchPage = () => {
               >
                 <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Select libraries to search</p>
                 <div className="space-y-1.5 max-h-36 overflow-y-auto">
-                  {availableDocs.map(doc => (
+                  {documents.filter(d => d.status === 'indexed').map(doc => (
                     <label
                       key={doc.id}
                       className="flex items-center gap-2 text-xs text-neutral-700 hover:text-neutral-900 cursor-pointer p-1 rounded hover:bg-neutral-50"
@@ -161,9 +267,14 @@ const ResearchPage = () => {
                         onChange={() => handleDocToggle(doc.id)}
                         className="rounded border-neutral-350 text-[#16a34a] focus:ring-green-500/10 h-3.5 w-3.5 cursor-pointer"
                       />
-                      <span className="truncate flex-1">{doc.name}</span>
+                      <span className="truncate flex-1">{doc.filename}</span>
                     </label>
                   ))}
+                  {documents.filter(d => d.status === 'indexed').length === 0 && (
+                    <div className="text-[10px] text-neutral-450 italic text-center py-2">
+                      No processed docs found.
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -171,7 +282,7 @@ const ResearchPage = () => {
 
           {/* Conversation history lists */}
           <div className="bg-white border border-neutral-200 rounded-xl p-4 flex-1 flex flex-col min-h-[220px] shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-            <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">History Sessions</span>
+            <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">Current Session History</span>
 
             <div className="space-y-1 overflow-y-auto flex-1">
               {messages.filter(m => m.role === 'user').map((m, idx) => (
@@ -192,7 +303,7 @@ const ResearchPage = () => {
           </div>
         </div>
 
-        {/* Right Side: Streaming Interface & Main Chat Box (3 Cols) */}
+        {/* Right Side: Streaming Interface & Main Chat Box */}
         <div className="lg:col-span-3 flex flex-col bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.02)] h-full">
 
           {/* Top Panel: Agent Network Status Indicator */}
@@ -204,19 +315,19 @@ const ResearchPage = () => {
 
             {/* Live active states */}
             <div className="flex items-center gap-3">
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all uppercase ${activeAgent === 'retrieval' ? 'bg-amber-100 text-amber-700 animate-pulse' : 'bg-neutral-100 text-neutral-400'
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all uppercase ${agentStatus === 'retrieval' ? 'bg-amber-100 text-amber-700 animate-pulse font-bold' : 'bg-neutral-100 text-neutral-400'
                 }`}>
                 Retrieval
               </span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all uppercase ${activeAgent === 'research' ? 'bg-purple-100 text-purple-700 animate-pulse' : 'bg-neutral-100 text-neutral-400'
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all uppercase ${agentStatus === 'research' ? 'bg-purple-100 text-purple-700 animate-pulse font-bold' : 'bg-neutral-100 text-neutral-400'
                 }`}>
                 Research
               </span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all uppercase ${activeAgent === 'critic' ? 'bg-rose-100 text-rose-700 animate-pulse' : 'bg-neutral-100 text-neutral-400'
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all uppercase ${agentStatus === 'critic' ? 'bg-rose-100 text-rose-700 animate-pulse font-bold' : 'bg-neutral-100 text-neutral-400'
                 }`}>
                 Critic
               </span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all uppercase ${activeAgent === 'summary' ? 'bg-green-100 text-green-700 animate-pulse' : 'bg-neutral-100 text-neutral-400'
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all uppercase ${agentStatus === 'summary' ? 'bg-green-100 text-green-700 animate-pulse font-bold' : 'bg-neutral-100 text-neutral-400'
                 }`}>
                 Summary
               </span>
@@ -253,7 +364,7 @@ const ResearchPage = () => {
                     <div className="space-y-4 max-w-[90%] text-left">
 
                       {/* Subtitle listing running agents */}
-                      {message.agents && (
+                      {message.agents && message.agents.length > 0 && (
                         <div className="flex items-center gap-1 text-[10px] text-neutral-400 font-bold uppercase tracking-wider">
                           <CheckCircle2 className="h-3 w-3 text-[#16a34a]" />
                           <span>Generated by {message.agents.join(' → ')}</span>
@@ -261,28 +372,27 @@ const ResearchPage = () => {
                       )}
 
                       {/* Main response body */}
-                      <div className="prose prose-neutral text-xs sm:text-sm text-neutral-850 leading-relaxed bg-white border border-neutral-150 rounded-2xl rounded-tl-sm p-4 shadow-sm whitespace-pre-line font-medium">
-                        {message.content}
+                      <div className="prose prose-neutral text-xs sm:text-sm text-neutral-850 leading-relaxed bg-white border border-neutral-150 rounded-2xl rounded-tl-sm p-4 shadow-sm whitespace-pre-wrap font-medium">
+                        {message.content || (message.isStreaming && 'Agent initialization...')}
                         {message.isStreaming && (
                           <span className="inline-block w-1.5 h-4 bg-[#16a34a] ml-0.5 animate-pulse" />
                         )}
                       </div>
 
-                      {/* Citations list */}
-                      {message.sources && message.sources.length > 0 && (
+                      {/* Citations list (Only shown after streaming is done) */}
+                      {!message.isStreaming && message.sources && message.sources.length > 0 && (
                         <div className="space-y-1.5 text-left">
                           <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Sources & Citations</p>
                           <div className="flex flex-wrap gap-2">
                             {message.sources.map(src => (
-                              <a
+                              <div
                                 key={src.id}
-                                href="#"
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-neutral-50 border border-neutral-200 text-neutral-700 hover:border-green-200 hover:text-[#16a34a] transition-colors text-xs font-semibold"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-neutral-50 border border-neutral-200 text-neutral-700 text-xs font-semibold"
                               >
                                 {src.type === 'PDF' ? <BookOpen className="h-3 w-3 text-rose-500" /> : <Globe className="h-3 w-3 text-green-600" />}
                                 <span className="max-w-[150px] truncate">{src.name}</span>
                                 <span className="text-[9px] font-extrabold text-neutral-400">{src.matchScore}</span>
-                              </a>
+                              </div>
                             ))}
                           </div>
                         </div>
@@ -294,15 +404,23 @@ const ResearchPage = () => {
 
                           {/* Left: Feedback & regenerate */}
                           <div className="flex items-center gap-2">
-                            <button className="p-1.5 text-neutral-400 hover:text-[#16a34a] rounded-md hover:bg-neutral-50 transition-all" title="Thumbs Up">
+                            <button 
+                              onClick={() => handleFeedback(5, 'Excellent helpful response')}
+                              className="p-1.5 text-neutral-400 hover:text-[#16a34a] rounded-md hover:bg-neutral-50 transition-all cursor-pointer" 
+                              title="Thumbs Up"
+                            >
                               <ThumbsUp className="h-4 w-4" />
                             </button>
-                            <button className="p-1.5 text-neutral-400 hover:text-rose-600 rounded-md hover:bg-neutral-50 transition-all" title="Thumbs Down">
+                            <button 
+                              onClick={() => handleFeedback(1, 'Inaccurate details or citations')}
+                              className="p-1.5 text-neutral-400 hover:text-rose-600 rounded-md hover:bg-neutral-50 transition-all cursor-pointer" 
+                              title="Thumbs Down"
+                            >
                               <ThumbsDown className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => submitQuery(messages[index - 1]?.content ?? '')}
-                              className="p-1.5 text-neutral-400 hover:text-neutral-800 rounded-md hover:bg-neutral-50 transition-all flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider"
+                              className="p-1.5 text-neutral-400 hover:text-neutral-800 rounded-md hover:bg-neutral-50 transition-all flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider cursor-pointer"
                               title="Regenerate"
                             >
                               <RotateCcw className="h-3.5 w-3.5" />
@@ -312,7 +430,7 @@ const ResearchPage = () => {
 
                           {/* Right: Generate Full Report */}
                           <button
-                            onClick={() => navigate('/report/rep_new')}
+                            onClick={() => navigate('/reports')}
                             className="bg-neutral-900 hover:bg-neutral-850 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
                           >
                             <FileText className="h-3.5 w-3.5" />
@@ -365,13 +483,13 @@ const ResearchPage = () => {
                   type="text"
                   placeholder="Ask a deep research question..."
                   value={query}
-                  disabled={isProcessing}
+                  disabled={isStreaming}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="w-full pl-4 pr-12 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white transition-all text-neutral-900 placeholder-neutral-400 shadow-inner disabled:bg-neutral-100"
+                  className="w-full pl-4 pr-12 py-3 border border-neutral-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white transition-all text-neutral-900 placeholder-neutral-400 shadow-inner disabled:bg-neutral-100"
                 />
 
                 {/* Floating spinner if agents are parsing */}
-                {isProcessing && (
+                {isStreaming && (
                   <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-neutral-405">
                     <Loader2 className="h-4.5 w-4.5 animate-spin text-[#16a34a]" />
                   </div>
@@ -380,7 +498,7 @@ const ResearchPage = () => {
 
               <button
                 type="submit"
-                disabled={!query.trim() || isProcessing}
+                disabled={!query.trim() || isStreaming}
                 className="bg-neutral-950 text-white hover:bg-neutral-850 disabled:bg-neutral-100 disabled:text-neutral-400 font-bold p-3 rounded-xl transition-all shadow-sm flex items-center justify-center cursor-pointer"
               >
                 <Send className="h-4 w-4" />

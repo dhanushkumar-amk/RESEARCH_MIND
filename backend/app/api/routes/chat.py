@@ -32,48 +32,66 @@ from app.core.config import settings
 router = APIRouter(prefix="", tags=["Chat"])
 
 # -------------------------------------------------------------
-# 1. INITIALIZE LANGCHAIN EMBEDDINGS & VECTOR STORE (Step 1 & 2)
+# 1. LAZY INITIALIZATION OF EMBEDDINGS, VECTOR STORE & RERANKER
 # -------------------------------------------------------------
-# Temporarily clear HF_TOKEN during init to prevent expired token exceptions on public models
-hf_token = os.environ.pop("HF_TOKEN", None)
+_embeddings = None
+_vector_store = None
+_compressor = None
 
-try:
-    # Use LangChain HuggingFaceEmbeddings to load the model locally
-    embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2",
-        model_kwargs={"device": "cpu"},
-        encode_kwargs={"normalize_embeddings": True}
-    )
-except Exception as e:
-    print(f"[RAG Pipeline] Error loading Embeddings model: {e}")
-    embeddings = None
+def get_embeddings():
+    global _embeddings
+    if _embeddings is None:
+        print("[RAG Pipeline] Lazily loading HuggingFaceEmbeddings...")
+        # Temporarily clear HF_TOKEN during init to prevent expired token exceptions on public models
+        hf_token = os.environ.pop("HF_TOKEN", None)
+        try:
+            _embeddings = HuggingFaceEmbeddings(
+                model_name="sentence-transformers/all-MiniLM-L6-v2",
+                model_kwargs={"device": "cpu"},
+                encode_kwargs={"normalize_embeddings": True}
+            )
+        except Exception as e:
+            print(f"[RAG Pipeline] Error loading Embeddings model: {e}")
+            _embeddings = None
+        finally:
+            if hf_token:
+                os.environ["HF_TOKEN"] = hf_token
+    return _embeddings
 
-# Set up synchronous pymongo client connection for langchain-mongodb vector search
-from pymongo import MongoClient
-sync_client = MongoClient(settings.mongodb_uri)
-sync_db = sync_client[settings.resolved_mongodb_database]
-sync_collection = sync_db["chunks"]
+def get_vector_store():
+    global _vector_store
+    if _vector_store is None:
+        print("[RAG Pipeline] Lazily initializing MongoDBAtlasVectorSearch...")
+        emb = get_embeddings()
+        from pymongo import MongoClient
+        sync_client = MongoClient(settings.mongodb_uri)
+        sync_db = sync_client[settings.resolved_mongodb_database]
+        sync_collection = sync_db["chunks"]
+        _vector_store = MongoDBAtlasVectorSearch(
+            collection=sync_collection,
+            embedding=emb,
+            index_name="vector_index",
+            text_key="text",
+            embedding_key="embedding"
+        )
+    return _vector_store
 
-vector_store = MongoDBAtlasVectorSearch(
-    collection=sync_collection,
-    embedding=embeddings,
-    index_name="vector_index",
-    text_key="text",
-    embedding_key="embedding"
-)
-
-# -------------------------------------------------------------
-# 2. INITIALIZE CROSS-ENCODER RERANKER (Step 5)
-# -------------------------------------------------------------
-try:
-    cross_encoder_model = HuggingFaceCrossEncoder(model_name="cross-encoder/ms-marco-MiniLM-L-6-v2")
-    compressor = CrossEncoderReranker(model=cross_encoder_model, top_n=5)
-except Exception as e:
-    print(f"[RAG Pipeline] Error loading Cross-Encoder model: {e}")
-    compressor = None
-finally:
-    if hf_token:
-        os.environ["HF_TOKEN"] = hf_token
+def get_compressor():
+    global _compressor
+    if _compressor is None:
+        print("[RAG Pipeline] Lazily loading Cross-Encoder model & Reranker...")
+        # Temporarily clear HF_TOKEN during init to prevent expired token exceptions on public models
+        hf_token = os.environ.pop("HF_TOKEN", None)
+        try:
+            cross_encoder_model = HuggingFaceCrossEncoder(model_name="cross-encoder/ms-marco-MiniLM-L-6-v2")
+            _compressor = CrossEncoderReranker(model=cross_encoder_model, top_n=5)
+        except Exception as e:
+            print(f"[RAG Pipeline] Error loading Cross-Encoder model: {e}")
+            _compressor = None
+        finally:
+            if hf_token:
+                os.environ["HF_TOKEN"] = hf_token
+    return _compressor
 
 # -------------------------------------------------------------
 # 3. INITIALIZE BM25 RETRIEVER IN-MEMORY CACHE (Step 3)
@@ -387,15 +405,17 @@ async def search_vector_async(inputs: dict) -> list[Document]:
         pre_filter["source_id"] = {"$in": [ObjectId(sid) for sid in source_ids]}
         
     try:
-        results_with_score = await vector_store.asimilarity_search_with_score(
+        vstore = get_vector_store()
+        results_with_score = await vstore.asimilarity_search_with_score(
             query,
             k=k_val,
             pre_filter=pre_filter
         )
     except (AttributeError, NotImplementedError):
+        vstore = get_vector_store()
         # Fallback to run synchronous search in a threadpool
         results_with_score = await asyncio.to_thread(
-            vector_store.similarity_search_with_score,
+            vstore.similarity_search_with_score,
             query,
             k=k_val,
             pre_filter=pre_filter
@@ -450,11 +470,12 @@ async def rerank_step_runnable(x: dict) -> dict:
     rag_config = BestConfigManager.get_applied_rag_config()
     top_n = rag_config.get("reranker_top_n", 5)
     
-    if compressor and fused_docs:
+    comp = get_compressor()
+    if comp and fused_docs:
         # Dynamic top_n update
-        compressor.top_n = top_n
+        comp.top_n = top_n
         # Run Compressor reranker in threadpool
-        reranked_docs = await asyncio.to_thread(compressor.compress_documents, fused_docs, query)
+        reranked_docs = await asyncio.to_thread(comp.compress_documents, fused_docs, query)
     else:
         reranked_docs = fused_docs[:top_n]
         

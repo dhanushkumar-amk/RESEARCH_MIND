@@ -1,15 +1,20 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   Sparkles, Check, ChevronRight, ChevronLeft, Upload, 
-  Globe, Cpu, Brain, Rocket, ShieldCheck, Database
+  Globe, Cpu, Brain, Rocket, ShieldCheck, Database, Loader2
 } from 'lucide-react';
 import { ROUTES } from '@/constants';
+import { settingsApi } from '@/api/settings';
+import { documentsApi } from '@/api/documents';
+import { useToast } from '@/hooks/useToast';
 
 const OnboardingPage = () => {
   const navigate = useNavigate();
+  const { success, error, info } = useToast();
   const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Step 1: Selected Topics
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
@@ -22,6 +27,7 @@ const OnboardingPage = () => {
   ];
 
   // Step 2: Ingested source
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [firstDocName, setFirstDocName] = useState('');
   const [firstUrl, setFirstUrl] = useState('');
 
@@ -39,13 +45,54 @@ const OnboardingPage = () => {
     );
   };
 
-  const handleNextStep = () => {
-    if (step < 3) {
-      setStep(prev => prev + 1);
-    } else {
-      // Done Onboarding! Save state/flag and navigate to dashboard
-      localStorage.setItem('researchmind.onboarded', 'true');
-      navigate(ROUTES.DASHBOARD);
+  const handleNextStep = async () => {
+    setIsSubmitting(true);
+    if (step === 1) {
+      try {
+        await settingsApi.updateSettings({ topic_preferences: selectedTopics });
+        success('Topic preferences saved');
+        setStep(2);
+      } catch (err: any) {
+        error(err.response?.data?.detail || err.message || 'Failed to save topics');
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else if (step === 2) {
+      let documentUploaded = false;
+      
+      if (selectedFile) {
+        try {
+          info('Uploading document...');
+          await documentsApi.uploadFile(selectedFile);
+          success('Document uploaded successfully');
+          documentUploaded = true;
+        } catch (err: any) {
+          error(err.response?.data?.detail || err.message || 'Failed to upload document');
+        }
+      } else if (firstUrl) {
+        try {
+          info('Ingesting URL...');
+          await documentsApi.ingestURL(firstUrl);
+          success('URL ingestion queued');
+          documentUploaded = true;
+        } catch (err: any) {
+          error(err.response?.data?.detail || err.message || 'Failed to ingest URL');
+        }
+      }
+
+      setIsSubmitting(false);
+      setStep(3);
+    } else if (step === 3) {
+      try {
+        await settingsApi.updateSettings({ llm_preference: selectedModel });
+        success('LLM preference saved. Welcome to ResearchMind!');
+        localStorage.setItem('researchmind.onboarded', 'true');
+        navigate(ROUTES.DASHBOARD);
+      } catch (err: any) {
+        error(err.response?.data?.detail || err.message || 'Failed to save settings');
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -146,7 +193,7 @@ const OnboardingPage = () => {
                   Ingest your first document
                 </h2>
                 <p className="text-xs text-neutral-500">
-                  Upload a PDF paper, or paste a reference URL web page to populate your vector database library.
+                  Upload a PDF paper, or paste a reference URL web page to populate your vector database library (or skip for now).
                 </p>
               </div>
 
@@ -159,6 +206,7 @@ const OnboardingPage = () => {
                     className="absolute inset-0 opacity-0 cursor-pointer"
                     onChange={(e) => {
                       if (e.target.files && e.target.files.length > 0) {
+                        setSelectedFile(e.target.files[0]);
                         setFirstDocName(e.target.files[0].name);
                       }
                     }}
@@ -186,7 +234,7 @@ const OnboardingPage = () => {
                       placeholder="https://arxiv.org/abs/..."
                       value={firstUrl}
                       onChange={(e) => setFirstUrl(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-900"
+                      className="w-full pl-9 pr-3 py-2 border border-neutral-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-[#16a34a] bg-white text-neutral-900"
                     />
                   </div>
                 </div>
@@ -248,7 +296,7 @@ const OnboardingPage = () => {
           <button
             type="button"
             onClick={handlePrevStep}
-            disabled={step === 1}
+            disabled={step === 1 || isSubmitting}
             className="px-4 py-2 border border-neutral-200 rounded-xl text-xs font-semibold text-neutral-700 hover:border-neutral-350 hover:bg-neutral-50 disabled:opacity-30 disabled:pointer-events-none transition-all flex items-center gap-1 cursor-pointer"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -258,10 +306,20 @@ const OnboardingPage = () => {
           <button
             type="button"
             onClick={handleNextStep}
-            className="bg-neutral-950 hover:bg-neutral-850 text-white font-semibold px-5 py-2.5 rounded-xl text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm"
+            disabled={isSubmitting}
+            className="bg-neutral-950 hover:bg-neutral-850 text-white font-semibold px-5 py-2.5 rounded-xl text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm disabled:opacity-50"
           >
-            <span>{step === 3 ? 'Finish Setup' : 'Next Step'}</span>
-            <ChevronRight className="h-4 w-4" />
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Processing...</span>
+              </>
+            ) : (
+              <>
+                <span>{step === 3 ? 'Finish Setup' : 'Next Step'}</span>
+                <ChevronRight className="h-4 w-4" />
+              </>
+            )}
           </button>
         </div>
 

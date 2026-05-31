@@ -97,8 +97,7 @@ async def memory_agent(state: AgentState, config: RunnableConfig) -> dict:
             })
             
         return {
-            "conversation_history": conversation_history,
-            "error": ""
+            "conversation_history": conversation_history
         }
         
     except Exception as e:

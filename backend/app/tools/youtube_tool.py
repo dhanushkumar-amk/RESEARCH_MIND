@@ -48,9 +48,21 @@ async def fetch_video_title(video_id: str) -> str:
 
 def sync_get_transcript(video_id: str) -> str:
     """Wrapper to run the synchronous YouTube transcript fetch in a thread pool."""
-    transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
-    # Join entries into a single text block
-    full_text = " ".join([entry["text"] for entry in transcript_list])
+    transcript_list = YouTubeTranscriptApi().fetch(video_id)
+    # Join entries into a single text block dynamically handling dict or object structure
+    text_pieces = []
+    for entry in transcript_list:
+        if hasattr(entry, "text"):
+            text_pieces.append(entry.text)
+        elif isinstance(entry, dict) and "text" in entry:
+            text_pieces.append(entry["text"])
+        else:
+            try:
+                text_pieces.append(entry.get("text", ""))
+            except Exception:
+                text_pieces.append(str(entry))
+                
+    full_text = " ".join(text_pieces)
     # Truncate if exceptionally long to avoid contextual overloading
     if len(full_text) > 10000:
         full_text = full_text[:10000] + "\n[Transcript truncated due to length limits]"

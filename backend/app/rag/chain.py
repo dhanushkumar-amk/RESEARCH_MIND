@@ -10,7 +10,7 @@ from langchain_core.retrievers import BaseRetriever
 
 from app.core.config import settings
 from app.core.database import get_database
-from app.rag.retriever import vector_store, get_user_bm25_retriever
+from app.rag.retriever import get_vector_store, get_user_bm25_retriever
 from app.rag.reranker import get_rerank_compressor
 from app.rag.context import format_chunks_with_lost_in_the_middle
 from app.rag.memory import get_session_history_and_summary
@@ -95,8 +95,9 @@ async def search_vector_async(inputs: dict) -> list[Document]:
     if source_ids:
         pre_filter["source_id"] = {"$in": [ObjectId(sid) for sid in source_ids]}
         
+    vstore = get_vector_store()
     try:
-        results_with_score = await vector_store.asimilarity_search_with_score(
+        results_with_score = await vstore.asimilarity_search_with_score(
             query,
             k=k_val,
             pre_filter=pre_filter
@@ -104,7 +105,7 @@ async def search_vector_async(inputs: dict) -> list[Document]:
     except (AttributeError, NotImplementedError):
         # Fallback to run synchronous search in threadpool
         results_with_score = await asyncio.to_thread(
-            vector_store.similarity_search_with_score,
+            vstore.similarity_search_with_score,
             query,
             k=k_val,
             pre_filter=pre_filter

@@ -264,3 +264,107 @@ async def save_agent_feedback(
     
     await db.feedbacks.insert_one(feedback_doc)
     return {"message": "Thank you! Your feedback has been registered."}
+
+
+@router.get("/reports")
+async def list_research_reports(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    GET /api/agents/reports
+    Lists all research reports created under the current user's sessions.
+    """
+    db = get_database()
+    cursor = db.sessions.find({
+        "user_id": str(current_user["_id"]),
+        "report": {"$exists": True}
+    })
+    sessions = await cursor.to_list(length=100)
+    
+    reports = []
+    for s in sessions:
+        report_data = s.get("report", {})
+        reports.append({
+            "id": s["session_id"],  # Map session_id as the report ID
+            "session_id": s["session_id"],
+            "title": report_data.get("executive_summary", "Synthesized Report Summary")[:100] + "...",
+            "created_at": s.get("updated_at") or s.get("created_at") or datetime.now(timezone.utc),
+            "report": report_data
+        })
+    return reports
+
+
+@router.delete("/report/{session_id}")
+async def delete_research_report(
+    session_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    DELETE /api/agents/report/{session_id}
+    Removes a research report by clearing it from the user's session document.
+    """
+    db = get_database()
+    user_id = str(current_user["_id"])
+    
+    # Clear the report field in the session doc
+    await db.sessions.update_one(
+        {"user_id": user_id, "session_id": session_id},
+        {"$unset": {"report": ""}}
+    )
+    return {"message": "Report deleted successfully."}
+
+
+@router.get("/sessions")
+async def list_user_sessions(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    GET /api/agents/sessions
+    Lists all session IDs and their last query timestamp for the current user.
+    """
+    db = get_database()
+    user_id = str(current_user["_id"])
+    
+    cursor = db.sessions.find({"user_id": user_id})
+    sessions = await cursor.to_list(length=100)
+    
+    session_list = []
+    seen_sessions = set()
+    
+    for s in sessions:
+        sess_id = s["session_id"]
+        seen_sessions.add(sess_id)
+        
+        first_msg = await db.chat_history.find_one({"user_id": user_id, "session_id": sess_id, "role": "user"}, sort=[("created_at", 1)])
+        first_question = first_msg["content"] if first_msg else "Deep Research Session"
+        
+        session_list.append({
+            "id": sess_id,
+            "session_id": sess_id,
+            "firstQuestion": first_question,
+            "date": s.get("updated_at", s.get("created_at", datetime.now(timezone.utc))).strftime("%b %d, %Y"),
+            "docCount": len(s.get("source_ids", [])),
+            "tokensUsed": "88K"
+        })
+        
+    # Check if there are any sessions in chat_history not in sessions collection
+    history_cursor = db.chat_history.find({"user_id": user_id})
+    history_docs = await history_cursor.to_list(length=1000)
+    
+    for h in history_docs:
+        sess_id = h.get("session_id")
+        if sess_id and sess_id not in seen_sessions:
+            seen_sessions.add(sess_id)
+            first_msg = await db.chat_history.find_one({"user_id": user_id, "session_id": sess_id, "role": "user"}, sort=[("created_at", 1)])
+            first_question = first_msg["content"] if first_msg else "Deep Research Session"
+            session_list.append({
+                "id": sess_id,
+                "session_id": sess_id,
+                "firstQuestion": first_question,
+                "date": h.get("created_at", datetime.now(timezone.utc)).strftime("%b %d, %Y"),
+                "docCount": 0,
+                "tokensUsed": "—"
+            })
+            
+    return session_list
+

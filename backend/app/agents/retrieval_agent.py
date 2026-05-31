@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from langchain_core.runnables import RunnableConfig
 from app.agents.state import AgentState
 from app.rag.chain import search_vector_async, search_bm25_async, merge_hybrid_results, get_rerank_compressor
@@ -53,7 +54,6 @@ async def retrieval_agent(state: AgentState, config: RunnableConfig) -> dict:
         # Step 3: Rerank results down to top 5 using Cross-Encoder
         compressor = get_rerank_compressor()
         if compressor and fused_docs:
-            import asyncio
             reranked_docs = await asyncio.to_thread(
                 compressor.compress_documents, 
                 fused_docs, 
@@ -81,8 +81,7 @@ async def retrieval_agent(state: AgentState, config: RunnableConfig) -> dict:
             
         # Return updated state
         return {
-            "retrieved_chunks": reranked_docs,
-            "error": ""
+            "retrieved_chunks": reranked_docs
         }
         
     except Exception as e:
@@ -91,5 +90,4 @@ async def retrieval_agent(state: AgentState, config: RunnableConfig) -> dict:
             "error": f"Retrieval Agent failed: {str(e)}"
         }
 
-# Import asyncio here inside retrieval_agent for parallel queries
-import asyncio
+

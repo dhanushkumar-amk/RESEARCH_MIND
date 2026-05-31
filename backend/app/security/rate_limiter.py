@@ -50,6 +50,8 @@ limiter = Limiter(
     key_func=get_user_id_from_jwt,
     storage_uri=storage_uri,
     headers_enabled=True,
+    swallow_errors=True,
+    in_memory_fallback_enabled=True,
     default_limits=[
         f"{settings.rate_limit_per_minute}/minute",
         f"{settings.rate_limit_per_day}/day"
