@@ -188,7 +188,7 @@ async def upload_document(
         "user_id": user_id,
         "filename": filename,
         "file_type": file_ext.lstrip("."),
-        "file_size": file.size,
+        "file_size": file.size if file.size is not None else len(file_bytes),
         "s3_url": s3_url,
         "status": "uploaded",
         "error_reason": None,
@@ -318,14 +318,16 @@ async def ingest_youtube(
 
 @router.get("/sources", response_model=List[SourceResponse])
 async def list_sources(
+    limit: int = 100,
+    skip: int = 0,
     current_user: dict = Depends(get_current_user)
 ):
     """
     Step 9: List all sources for the current authenticated user (with presigned S3 URLs).
     """
     db = get_database()
-    cursor = db.sources.find({"user_id": str(current_user["_id"])})
-    sources = await cursor.to_list(length=100)
+    cursor = db.sources.find({"user_id": str(current_user["_id"])}).skip(skip)
+    sources = await cursor.to_list(length=limit)
     return [await _serialize_mongo_doc(src) for src in sources]
 
 

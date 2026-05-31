@@ -11,7 +11,11 @@ database: AsyncIOMotorDatabase | None = None
 async def connect_to_mongo() -> None:
     global client, database
 
-    client = AsyncIOMotorClient(settings.mongodb_uri)
+    client = AsyncIOMotorClient(
+        settings.mongodb_uri,
+        maxPoolSize=50,
+        minPoolSize=10
+    )
     database = client[settings.resolved_mongodb_database]
 
     # Ensure chunks collection exists for Vector Search index creation

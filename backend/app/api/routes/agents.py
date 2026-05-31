@@ -1,6 +1,7 @@
 import json
 import logging
 import asyncio
+import time
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Request
@@ -17,8 +18,46 @@ logger = logging.getLogger("researchmind")
 
 router = APIRouter(prefix="/api/agents", tags=["Agents"])
 
+# TTL dictionary to track active running agent nodes per session with automatic cleanup
+class TTLDict(dict):
+    def __init__(self, ttl_seconds: int = 3600):
+        super().__init__()
+        self.ttl = ttl_seconds
+        self.timestamps = {}
+
+    def _cleanup(self):
+        now = time.time()
+        expired = [k for k, ts in self.timestamps.items() if now - ts > self.ttl]
+        for k in expired:
+            super().pop(k, None)
+            self.timestamps.pop(k, None)
+
+    def __setitem__(self, key, value):
+        self._cleanup()
+        self.timestamps[key] = time.time()
+        super().__setitem__(key, value)
+
+    def __getitem__(self, key):
+        self._cleanup()
+        if key not in self:
+            raise KeyError(key)
+        return super().__getitem__(key)
+
+    def get(self, key, default=None):
+        self._cleanup()
+        return super().get(key, default)
+
+    def pop(self, key, default=None):
+        self._cleanup()
+        self.timestamps.pop(key, None)
+        return super().pop(key, default)
+
+    def __contains__(self, key):
+        self._cleanup()
+        return super().__contains__(key)
+
 # Global dictionary to track active running agent nodes per session
-active_agents_status: Dict[str, str] = {}
+active_agents_status = TTLDict(3600)
 
 # -------------------------------------------------------------
 # PYDANTIC INPUT/OUTPUT SCHEMAS
@@ -368,21 +407,19 @@ async def list_user_sessions(
             "tokensUsed": "88K"
         })
         
-    # Check if there are any sessions in chat_history not in sessions collection
-    history_cursor = db.chat_history.find({"user_id": user_id})
-    history_docs = await history_cursor.to_list(length=1000)
-    
-    for h in history_docs:
-        sess_id = h.get("session_id")
+    # Add any sessions present in chat_history but not explicitly created in sessions collection
+    for sess_id, info in first_questions_map.items():
         if sess_id and sess_id not in seen_sessions:
             seen_sessions.add(sess_id)
-            info = first_questions_map.get(sess_id)
             first_question = info["first_question"] if info else "Deep Research Session"
+            created_at = info.get("created_at") if info else None
+            if not isinstance(created_at, datetime):
+                created_at = datetime.now(timezone.utc)
             session_list.append({
                 "id": sess_id,
                 "session_id": sess_id,
                 "firstQuestion": first_question,
-                "date": h.get("created_at", datetime.now(timezone.utc)).strftime("%b %d, %Y"),
+                "date": created_at.strftime("%b %d, %Y"),
                 "docCount": 0,
                 "tokensUsed": "—"
             })

@@ -2,7 +2,71 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/constants';
 import useAuth from '@/hooks/useAuth';
-import * as Lucide from 'lucide-react';
+import {
+  Brain,
+  ArrowRight,
+  Sparkles,
+  CheckCircle2,
+  Loader,
+  ShieldCheck,
+  Check,
+  Layout,
+  BookOpen,
+  Cpu,
+  Key,
+  Info,
+  FileText,
+  Download,
+  ShieldAlert,
+  Blocks,
+  TrendingUp,
+  GraduationCap,
+  Terminal,
+  FolderLock,
+  X,
+  Loader2,
+  Lock,
+  HelpCircle,
+  CreditCard,
+  BarChart3,
+  Microscope,
+  ListChecks,
+  Globe,
+  Database
+} from 'lucide-react';
+
+const Lucide = {
+  Brain,
+  ArrowRight,
+  Sparkles,
+  CheckCircle2,
+  Loader,
+  ShieldCheck,
+  Check,
+  Layout,
+  BookOpen,
+  Cpu,
+  Key,
+  Info,
+  FileText,
+  Download,
+  ShieldAlert,
+  Blocks,
+  TrendingUp,
+  GraduationCap,
+  Terminal,
+  FolderLock,
+  X,
+  Loader2,
+  Lock,
+  HelpCircle,
+  CreditCard,
+  BarChart3,
+  Microscope,
+  ListChecks,
+  Globe,
+  Database
+};
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ResponsiveContainer,

@@ -4,7 +4,6 @@ from bson import ObjectId
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableParallel, RunnableLambda
-from langchain_litellm import ChatLiteLLM
 from langchain_classic.retrievers import EnsembleRetriever
 from langchain_core.retrievers import BaseRetriever
 
@@ -30,28 +29,83 @@ FALLBACK_MODELS = [
     "gemini/gemini-1.5-flash"
 ]
 
-# Configure primary ChatLiteLLM (increased timeout and retries for stability under rate limits)
-primary_llm = ChatLiteLLM(
-    model=FALLBACK_MODELS[0],
-    temperature=0.1,
-    max_tokens=1000,
-    request_timeout=30.0,
-    max_retries=5
-)
+# Lazy proxy class for LLMs
+class LazyProxy:
+    def __init__(self, factory):
+        object.__setattr__(self, "_factory", factory)
+        object.__setattr__(self, "_wrapped", None)
 
-# Configure fallback ChatLiteLLM models
-fallback_llms = [
-    ChatLiteLLM(
-        model=model_name,
+    def _get_wrapped(self):
+        wrapped = object.__getattribute__(self, "_wrapped")
+        if wrapped is None:
+            factory = object.__getattribute__(self, "_factory")
+            wrapped = factory()
+            object.__setattr__(self, "_wrapped", wrapped)
+        return wrapped
+
+    def __getattribute__(self, name):
+        if name in ("_factory", "_wrapped", "_get_wrapped", "__or__", "__ror__", "__aiter__", "__anext__"):
+            return object.__getattribute__(self, name)
+        return getattr(self._get_wrapped(), name)
+
+    def __setattr__(self, name, value):
+        setattr(self._get_wrapped(), name, value)
+
+    def __call__(self, *args, **kwargs):
+        return self._get_wrapped()(*args, **kwargs)
+
+    def __iter__(self):
+        return iter(self._get_wrapped())
+
+    def __next__(self):
+        return next(self._get_wrapped())
+
+    def __repr__(self):
+        return repr(self._get_wrapped())
+
+    def __str__(self):
+        return str(self._get_wrapped())
+
+    def __or__(self, other):
+        return self._get_wrapped().__or__(other)
+
+    def __ror__(self, other):
+        return self._get_wrapped().__ror__(other)
+
+    def __aiter__(self):
+        return self._get_wrapped().__aiter__()
+
+    def __anext__(self):
+        return self._get_wrapped().__anext__()
+
+
+def _make_primary_llm():
+    from langchain_litellm import ChatLiteLLM
+    return ChatLiteLLM(
+        model=FALLBACK_MODELS[0],
         temperature=0.1,
         max_tokens=1000,
         request_timeout=30.0,
         max_retries=5
     )
-    for model_name in FALLBACK_MODELS[1:]
-]
 
-resilient_llm = primary_llm.with_fallbacks(fallbacks=fallback_llms)
+def _make_resilient_llm():
+    from langchain_litellm import ChatLiteLLM
+    primary = _make_primary_llm()
+    fallbacks = [
+        ChatLiteLLM(
+            model=model_name,
+            temperature=0.1,
+            max_tokens=1000,
+            request_timeout=30.0,
+            max_retries=5
+        )
+        for model_name in FALLBACK_MODELS[1:]
+    ]
+    return primary.with_fallbacks(fallbacks=fallbacks)
+
+primary_llm = LazyProxy(_make_primary_llm)
+resilient_llm = LazyProxy(_make_resilient_llm)
 
 class PrecomputedRetriever(BaseRetriever):
     docs: list[Document]

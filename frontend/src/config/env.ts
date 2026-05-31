@@ -7,9 +7,6 @@ export const ENV = {
     || 'http://localhost:8000',
   API_TIMEOUT: Number(import.meta.env.VITE_API_TIMEOUT) || 30000,
 
-  JWT_SECRET: import.meta.env.VITE_JWT_SECRET || '',
-  TOKEN_EXPIRY: import.meta.env.VITE_TOKEN_EXPIRY || '7d',
-
   ENABLE_STREAMING: 
     import.meta.env.VITE_ENABLE_STREAMING === 'true',
   ENABLE_ANALYTICS: 
@@ -19,15 +16,6 @@ export const ENV = {
 
   APP_URL: import.meta.env.VITE_APP_URL 
     || 'http://localhost:5173',
-
-  GROQ_API_KEY: import.meta.env.VITE_GROQ_API_KEY || '',
-  GEMINI_API_KEY: import.meta.env.VITE_GEMINI_API_KEY || '',
-  OPENROUTER_API_KEY: 
-    import.meta.env.VITE_OPENROUTER_API_KEY || '',
-  DEEPSEEK_API_KEY: 
-    import.meta.env.VITE_DEEPSEEK_API_KEY || '',
-  PERPLEXITY_API_KEY: 
-    import.meta.env.VITE_PERPLEXITY_API_KEY || '',
 
   DEFAULT_LLM_PROVIDER: 
     import.meta.env.VITE_DEFAULT_LLM_PROVIDER || 'groq',

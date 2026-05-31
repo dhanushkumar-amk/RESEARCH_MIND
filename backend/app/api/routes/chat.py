@@ -15,10 +15,8 @@ from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableParallel, RunnableLambda
 from langchain_mongodb import MongoDBAtlasVectorSearch
-from langchain_litellm import ChatLiteLLM
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.retrievers import BaseRetriever
-from langchain_classic.memory import ConversationSummaryMemory
 
 from app.dependencies.auth import get_current_user
 from app.core.database import get_database
@@ -167,52 +165,37 @@ def get_user_bm25_retriever(user_id: str, source_ids: Optional[List[str]] = None
 # -------------------------------------------------------------
 # 4. CONFIGURE CHAT LITELLM WITH RESILIENT FALLBACKS (Step 7)
 # -------------------------------------------------------------
-FALLBACK_MODELS = [
-    "groq/llama-3.3-70b-versatile",
-    "openrouter/meta-llama/llama-3.3-70b-instruct:free",
-    "openrouter/deepseek/deepseek-r1:free",
-    "openrouter/nvidia/nemotron-3-super-120b:free",
-    "openrouter/qwen/qwen3-coder:free",
-    "openrouter/mistralai/mistral-7b-instruct:free",
-    "openrouter/microsoft/phi-3-medium-128k-instruct:free",
-    "openrouter/meta-llama/llama-3.1-8b-instruct:free",
-    "openrouter/openai/gpt-oss-120b:free",
-    "openrouter/deepseek/deepseek-v4-flash:free",
-    "gemini/gemini-1.5-flash"
-]
+from app.rag.chain import LazyProxy, FALLBACK_MODELS
 
-# Configure primary ChatLiteLLM (increased timeout and retries for stability under rate limits)
-primary_llm = ChatLiteLLM(
-    model=FALLBACK_MODELS[0],
-    temperature=0.1,
-    max_tokens=1000,
-    request_timeout=30.0,
-    max_retries=5
-)
-
-# Configure fallback ChatLiteLLM models
-fallback_llms = [
-    ChatLiteLLM(
-        model=model_name,
+def _make_primary_llm():
+    from langchain_litellm import ChatLiteLLM
+    return ChatLiteLLM(
+        model=FALLBACK_MODELS[0],
         temperature=0.1,
         max_tokens=1000,
         request_timeout=30.0,
         max_retries=5
     )
-    for model_name in FALLBACK_MODELS[1:]
-]
 
-resilient_llm = primary_llm.with_fallbacks(fallbacks=fallback_llms)
+def _make_resilient_llm():
+    from langchain_litellm import ChatLiteLLM
+    primary = _make_primary_llm()
+    fallbacks = [
+        ChatLiteLLM(
+            model=model_name,
+            temperature=0.1,
+            max_tokens=1000,
+            request_timeout=30.0,
+            max_retries=5
+        )
+        for model_name in FALLBACK_MODELS[1:]
+    ]
+    return primary.with_fallbacks(fallbacks=fallbacks)
 
-# Configure cheap model for conversation summary (using LangChain ConversationSummaryMemory)
-summary_llm = ChatLiteLLM(
-    model="groq/llama-3.1-8b",
-    temperature=0.0,
-    max_tokens=500
-)
+primary_llm = LazyProxy(_make_primary_llm)
+resilient_llm = LazyProxy(_make_resilient_llm)
 
-# Initialize LangChain ConversationSummaryMemory
-summary_memory = ConversationSummaryMemory(llm=summary_llm)
+_summary_memory_cache = None
 
 # -------------------------------------------------------------
 # 5. SCHEMAS & HELPERS
@@ -334,8 +317,19 @@ async def get_session_history_and_summary(user_id: str, session_id: str, db) -> 
     
     if count_tokens(dialogue) > 2400:
         print("[RAG Pipeline] Conversation history exceeds 2400 tokens. Generating summary via ConversationSummaryMemory...")
+        global _summary_memory_cache
+        if _summary_memory_cache is None:
+            from langchain_litellm import ChatLiteLLM
+            from langchain_classic.memory import ConversationSummaryMemory
+            summary_llm = ChatLiteLLM(
+                model="groq/llama-3.1-8b",
+                temperature=0.0,
+                max_tokens=500
+            )
+            _summary_memory_cache = ConversationSummaryMemory(llm=summary_llm)
+            
         summary = await asyncio.to_thread(
-            summary_memory.predict_new_summary,
+            _summary_memory_cache.predict_new_summary,
             messages,
             existing_summary=""
         )

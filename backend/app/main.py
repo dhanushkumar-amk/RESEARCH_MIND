@@ -1,12 +1,21 @@
+import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel, HttpUrl
 from typing import List, Optional
 import asyncio
 import time
+
+# Configure structured logging to standard output
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[logging.StreamHandler()]
+)
+logger = logging.getLogger("researchmind")
 
 from app.api.routes.auth import router as auth_router
 from app.api.routes.sources import router as sources_router
@@ -26,9 +35,12 @@ from app.security.rate_limiter import limiter
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
+async def lifespan(app: FastAPI):
     # Establish MongoDB connection synchronously (very fast)
     await connect_to_mongo()
+    
+    # Initialize startup status
+    app.state.startup_complete = False
     
     start_scheduler()
     
@@ -45,10 +57,13 @@ async def lifespan(_: FastAPI):
             # Run tool registry health checks (external network HTTP requests to Tavily, ArXiv, GitHub etc.)
             from app.tools.tool_registry import run_tool_registry_health_checks
             await run_tool_registry_health_checks()
+            
+            app.state.startup_complete = True
+            logger.info("[Lifespan Startup] Background initialization completed successfully. Ready for traffic.")
         except Exception as e:
-            import logging
-            logger = logging.getLogger("researchmind")
             logger.error(f"[Lifespan Startup] Error during background initialization: {e}", exc_info=True)
+            # Set to True anyway to allow server access if there's a minor error in non-blocking tasks
+            app.state.startup_complete = True
             
     asyncio.create_task(run_startup_tasks())
     
@@ -69,6 +84,15 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+
+# HTTP Request Logging Middleware
+@app.middleware("http")
+async def log_requests(request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    duration = int((time.time() - start_time) * 1000)
+    logger.info(f"{request.method} {request.url.path} - Status: {response.status_code} - Latency: {duration}ms")
+    return response
 
 # CORS middleware to allow connection from the React frontend
 app.add_middleware(
@@ -93,6 +117,12 @@ async def root():
 
 @app.get("/health")
 async def health_check():
+    startup_ready = getattr(app.state, "startup_complete", False)
+    if not startup_ready:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"status": "starting", "service": "ResearchMind Backend"}
+        )
     return {"status": "healthy", "service": "ResearchMind Backend"}
 
 @app.get("/report/{report_id}")

@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from typing import List, Optional
 from pymongo import MongoClient
 from bson import ObjectId
@@ -29,8 +30,10 @@ def get_vector_store() -> MongoDBAtlasVectorSearch:
     return _vector_store
 
 
-# Cache built BM25Retriever instances to avoid rebuilding on every agent request
-_bm25_retriever_cache = {}
+# Cache built BM25Retriever instances to avoid rebuilding on every agent request.
+# Using OrderedDict to implement an LRU cache with eviction logic.
+_bm25_retriever_cache = OrderedDict()
+MAX_CACHE_SIZE = 128
 
 # Global documents cache for in-memory BM25 index
 all_documents_cache: List[Document] = []
@@ -79,6 +82,7 @@ def get_user_bm25_retriever(user_id: str, source_ids: Optional[List[str]] = None
     # Generate a cache key
     cache_key = user_id if not source_ids else (user_id, tuple(sorted(source_ids)))
     if cache_key in _bm25_retriever_cache:
+        _bm25_retriever_cache.move_to_end(cache_key)
         return _bm25_retriever_cache[cache_key]
     
     # Filter documents in-memory
@@ -103,4 +107,6 @@ def get_user_bm25_retriever(user_id: str, source_ids: Optional[List[str]] = None
     retriever = BM25Retriever.from_documents(user_docs)
     retriever.k = 20
     _bm25_retriever_cache[cache_key] = retriever
+    if len(_bm25_retriever_cache) > MAX_CACHE_SIZE:
+        _bm25_retriever_cache.popitem(last=False)
     return retriever
