@@ -30,13 +30,13 @@ FALLBACK_MODELS = [
     "gemini/gemini-1.5-flash"
 ]
 
-# Configure primary ChatLiteLLM
+# Configure primary ChatLiteLLM (increased timeout and retries for stability under rate limits)
 primary_llm = ChatLiteLLM(
     model=FALLBACK_MODELS[0],
     temperature=0.1,
     max_tokens=1000,
-    request_timeout=10.0,
-    max_retries=2
+    request_timeout=30.0,
+    max_retries=5
 )
 
 # Configure fallback ChatLiteLLM models
@@ -45,8 +45,8 @@ fallback_llms = [
         model=model_name,
         temperature=0.1,
         max_tokens=1000,
-        request_timeout=10.0,
-        max_retries=2
+        request_timeout=30.0,
+        max_retries=5
     )
     for model_name in FALLBACK_MODELS[1:]
 ]

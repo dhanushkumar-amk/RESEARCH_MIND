@@ -325,6 +325,27 @@ async def list_user_sessions(
     db = get_database()
     user_id = str(current_user["_id"])
     
+    # 20-year experience tip: avoid N+1 query patterns. Bulk-fetch the first message 
+    # of all sessions in a single, fast MongoDB aggregation pipeline.
+    pipeline = [
+        {"$match": {"user_id": user_id, "role": "user"}},
+        {"$sort": {"created_at": 1}},
+        {
+            "$group": {
+                "_id": "$session_id",
+                "first_question": {"$first": "$content"},
+                "created_at": {"$first": "$created_at"}
+            }
+        }
+    ]
+    
+    try:
+        agg_cursor = db.chat_history.aggregate(pipeline)
+        first_questions_map = {doc["_id"]: doc for doc in await agg_cursor.to_list(length=1000)}
+    except Exception as e:
+        logger.error(f"[Agents Route] Aggregation failed: {e}")
+        first_questions_map = {}
+        
     cursor = db.sessions.find({"user_id": user_id})
     sessions = await cursor.to_list(length=100)
     
@@ -335,8 +356,8 @@ async def list_user_sessions(
         sess_id = s["session_id"]
         seen_sessions.add(sess_id)
         
-        first_msg = await db.chat_history.find_one({"user_id": user_id, "session_id": sess_id, "role": "user"}, sort=[("created_at", 1)])
-        first_question = first_msg["content"] if first_msg else "Deep Research Session"
+        info = first_questions_map.get(sess_id)
+        first_question = info["first_question"] if info else "Deep Research Session"
         
         session_list.append({
             "id": sess_id,
@@ -355,8 +376,8 @@ async def list_user_sessions(
         sess_id = h.get("session_id")
         if sess_id and sess_id not in seen_sessions:
             seen_sessions.add(sess_id)
-            first_msg = await db.chat_history.find_one({"user_id": user_id, "session_id": sess_id, "role": "user"}, sort=[("created_at", 1)])
-            first_question = first_msg["content"] if first_msg else "Deep Research Session"
+            info = first_questions_map.get(sess_id)
+            first_question = info["first_question"] if info else "Deep Research Session"
             session_list.append({
                 "id": sess_id,
                 "session_id": sess_id,

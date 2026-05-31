@@ -10,7 +10,6 @@ from app.core.config import settings
 from app.core.database import get_database
 from app.models.evaluation_schemas import EvaluationResult, ScoreRecord
 from app.evaluation.metrics import get_ragas_metrics, get_ragas_llm_and_embeddings
-from app.evaluation.mlflow_logger import log_evaluation_to_mlflow
 
 logger = logging.getLogger("researchmind")
 
@@ -38,7 +37,8 @@ class RAGASEvaluator:
         data = {
             "question": [question],
             "answer": [answer],
-            "contexts": [contexts]
+            "contexts": [contexts],
+            "reference": [ground_truth if ground_truth else question]
         }
         if ground_truth:
             data["ground_truth"] = [ground_truth]
@@ -57,7 +57,7 @@ class RAGASEvaluator:
             run_metrics.append(metrics[3])
             run_metrics.append(metrics[4])
 
-        # Step 2 & 3: Run metrics with 30s timeout using threadpool to prevent event loop blocking
+        # Step 2 & 3: Run metrics with 90s timeout using threadpool to prevent event loop blocking
         from ragas import evaluate
         try:
             logger.info(f"[RAGASEvaluator] Running {len(run_metrics)} RAGAS metrics in thread pool...")
@@ -69,10 +69,10 @@ class RAGASEvaluator:
                     llm=ragas_llm,
                     embeddings=ragas_embeddings
                 ),
-                timeout=30.0
+                timeout=90.0
             )
         except asyncio.TimeoutError:
-            logger.error("[RAGASEvaluator] RAGAS evaluation timed out after 30 seconds.")
+            logger.error("[RAGASEvaluator] RAGAS evaluation timed out after 90 seconds.")
             # Graceful fallback: return zeroed out values if it times out
             result_dict = {}
         except Exception as e:
@@ -151,34 +151,7 @@ class RAGASEvaluator:
         
         asyncio.create_task(self._persist_scores_to_db(score_rec))
 
-        # Log to MLflow (non-blocking background task)
-        run_params = {
-            "chunk_size": getattr(settings, "chunk_size", 500),
-            "k_value": getattr(settings, "k_value", 5),
-            "embedding_model": "all-MiniLM-L6-v2",
-            "reranker_model": "bge-reranker-large",
-            "llm_model": model_used
-        }
-        
-        # Fire-and-forget MLflow logger
-        asyncio.create_task(
-            asyncio.to_thread(
-                log_evaluation_to_mlflow,
-                params=run_params,
-                metrics={
-                    "faithfulness": faithfulness_score,
-                    "answer_relevance": answer_relevance_score,
-                    "context_relevance": context_relevance_score,
-                    "composite_score": composite_score,
-                    "evaluation_latency_ms": latency_ms
-                },
-                tags={
-                    "session_id": session_id,
-                    "quality_level": quality_level,
-                    "flagged": str(flagged)
-                }
-            )
-        )
+
 
         # Log LangSmith evaluation trace metrics
         self._log_to_langsmith_trace(eval_result, session_id, flagged or needs_disclaimer)
@@ -212,15 +185,18 @@ class RAGASEvaluator:
                     tags.append("evaluation.regenerated")
 
                 now = datetime.now(timezone.utc)
-                ls_client.create_run(
-                    name="RAGAS Evaluation Run",
-                    run_type="llm",
-                    inputs={"session_id": session_id},
-                    outputs=eval_result.model_dump(),
-                    tags=tags,
-                    project_name=settings.langchain_project or "researchmind",
-                    start_time=now,
-                    end_time=now
+                asyncio.create_task(
+                    asyncio.to_thread(
+                        ls_client.create_run,
+                        name="RAGAS Evaluation Run",
+                        run_type="llm",
+                        inputs={"session_id": session_id},
+                        outputs=eval_result.model_dump(),
+                        tags=tags,
+                        project_name=settings.langchain_project or "researchmind",
+                        start_time=now,
+                        end_time=now
+                    )
                 )
             except Exception as e:
                 logger.debug(f"[RAGASEvaluator] LangSmith logging failed: {e}")

@@ -14,7 +14,6 @@ from app.api.routes.chat import router as chat_router, init_bm25_retriever
 from app.api.routes.agents import router as agents_router
 from app.api.routes.security import router as security_router
 from app.evaluation.evaluation_api import router as evaluation_router
-from app.mlflow.endpoints import router as mlflow_router
 from app.api.routes.settings import router as settings_router
 from app.core.config import settings
 from app.core.database import close_mongo_connection, connect_to_mongo
@@ -36,10 +35,8 @@ async def lifespan(_: FastAPI):
     # Run heavy initialization and network tasks in the background for instant server startup
     async def run_startup_tasks():
         try:
-            # Initialize MLflow and apply best configurations (includes network logs to LangSmith)
-            from app.mlflow.config import init_mlflow
+            # Apply best configurations (includes network logs to LangSmith)
             from app.mlflow.manager import BestConfigManager
-            await asyncio.to_thread(init_mlflow)
             await BestConfigManager.apply_best_config()
             
             # Pre-fetch chunks and build BM25 index (heavy database reads)
@@ -88,7 +85,6 @@ app.include_router(chat_router)
 app.include_router(agents_router)
 app.include_router(security_router)
 app.include_router(evaluation_router)
-app.include_router(mlflow_router)
 app.include_router(settings_router)
 
 @app.get("/")

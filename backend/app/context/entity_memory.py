@@ -11,6 +11,27 @@ from app.core.database import get_database
 
 logger = logging.getLogger("researchmind")
 
+def extract_string_content(content) -> str:
+    if isinstance(content, str):
+        return content
+    elif isinstance(content, list):
+        parts = []
+        for part in content:
+            if isinstance(part, dict):
+                if "text" in part:
+                    parts.append(part["text"])
+                elif "content" in part:
+                    parts.append(part["content"])
+                else:
+                    parts.append(str(part))
+            else:
+                parts.append(str(part))
+        return "".join(parts)
+    elif content is None:
+        return ""
+    else:
+        return str(content)
+
 class EntityMemory:
     def __init__(self):
         # Initialize LLM for entity extraction and fact updating
@@ -50,7 +71,7 @@ class EntityMemory:
 
         try:
             response = await self.llm.ainvoke(prompt)
-            content = response.content.strip()
+            content = extract_string_content(response.content).strip()
             # Clean markdown JSON block formatting if present
             if content.startswith("```json"):
                 content = content[7:]

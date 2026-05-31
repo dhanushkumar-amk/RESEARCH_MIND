@@ -10,6 +10,27 @@ from app.evaluation.ragas_evaluator import RAGASEvaluator
 
 logger = logging.getLogger("researchmind")
 
+def extract_string_content(content) -> str:
+    if isinstance(content, str):
+        return content
+    elif isinstance(content, list):
+        parts = []
+        for part in content:
+            if isinstance(part, dict):
+                if "text" in part:
+                    parts.append(part["text"])
+                elif "content" in part:
+                    parts.append(part["content"])
+                else:
+                    parts.append(str(part))
+            else:
+                parts.append(str(part))
+        return "".join(parts)
+    elif content is None:
+        return ""
+    else:
+        return str(content)
+
 async def critic_agent(state: AgentState, config: RunnableConfig) -> dict:
     """
     NODE 3: Critic Agent
@@ -58,7 +79,7 @@ async def critic_agent(state: AgentState, config: RunnableConfig) -> dict:
         
         try:
             response = await primary_llm.ainvoke(prompt, config=config)
-            content = response.content.strip()
+            content = extract_string_content(response.content).strip()
             # Find any integer in response
             import re
             match = re.search(r'\b(10|[0-9])\b', content)
@@ -92,7 +113,7 @@ async def critic_agent(state: AgentState, config: RunnableConfig) -> dict:
     candidate_answer = ""
     try:
         draft_response = await primary_llm.ainvoke(draft_prompt, config=config)
-        candidate_answer = draft_response.content.strip()
+        candidate_answer = extract_string_content(draft_response.content).strip()
     except Exception as e:
         logger.error(f"[Critic Agent] Failed to generate draft answer: {e}")
         candidate_answer = "Draft answer generation failed."

@@ -40,10 +40,14 @@ async def _serialize_mongo_doc(doc: dict) -> dict:
     if s3_url and s3_url.startswith("researchmind/"):
         serialized["s3_url"] = s3_service.generate_presigned_url(s3_url)
     
-    # Fill in chunk_count if missing/None
+    # 20-year experience tip: Avoid redundant count_documents query for files in-progress
+    # or files that already have the chunk_count cached.
     if serialized.get("chunk_count") is None:
-        db = get_database()
-        serialized["chunk_count"] = await db.chunks.count_documents({"source_id": doc["_id"] if "_id" in doc else ObjectId(serialized["id"])})
+        if serialized.get("status") == "indexed":
+            db = get_database()
+            serialized["chunk_count"] = await db.chunks.count_documents({"source_id": doc["_id"] if "_id" in doc else ObjectId(serialized["id"])})
+        else:
+            serialized["chunk_count"] = 0
     return serialized
 
 async def run_ingestion_pipeline(

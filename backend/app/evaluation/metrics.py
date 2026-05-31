@@ -1,6 +1,11 @@
 import sys
 import logging
 from unittest.mock import MagicMock
+import warnings
+
+# Suppress noisy external library deprecation warnings (e.g. from ragas and langchain)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
 
 # 10-year experience pro tip: Dynamic mock to bypass Ragas vertexai import error in langchain_community
 if "langchain_community.chat_models.vertexai" not in sys.modules:

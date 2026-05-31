@@ -3,7 +3,6 @@ from pymongo import MongoClient
 from bson import ObjectId
 from langchain_core.documents import Document
 from langchain_mongodb import MongoDBAtlasVectorSearch
-from langchain_community.retrievers import BM25Retriever
 
 from app.core.config import settings
 from app.core.database import get_database
@@ -30,6 +29,9 @@ def get_vector_store() -> MongoDBAtlasVectorSearch:
     return _vector_store
 
 
+# Cache built BM25Retriever instances to avoid rebuilding on every agent request
+_bm25_retriever_cache = {}
+
 # Global documents cache for in-memory BM25 index
 all_documents_cache: List[Document] = []
 
@@ -38,7 +40,8 @@ async def init_bm25_retriever() -> None:
     Fetch all documents from MongoDB chunks collection on startup.
     Keeps BM25 index in memory and supports refreshing.
     """
-    global all_documents_cache
+    global all_documents_cache, _bm25_retriever_cache
+    _bm25_retriever_cache.clear() # Invalidate cache
     try:
         db = get_database()
         cursor = db.chunks.find(
@@ -66,12 +69,17 @@ async def init_bm25_retriever() -> None:
     except Exception as e:
         print(f"[RAG Retriever] Failed to initialize BM25 retriever cache: {e}")
 
-def get_user_bm25_retriever(user_id: str, source_ids: Optional[List[str]] = None) -> BM25Retriever:
+def get_user_bm25_retriever(user_id: str, source_ids: Optional[List[str]] = None):
     """
     Filters the global cache in-memory by user_id and source_ids,
-    then returns a BM25Retriever instance with k=20.
+    then returns a cached or newly compiled BM25Retriever instance with k=20.
     """
-    global all_documents_cache
+    global all_documents_cache, _bm25_retriever_cache
+    
+    # Generate a cache key
+    cache_key = user_id if not source_ids else (user_id, tuple(sorted(source_ids)))
+    if cache_key in _bm25_retriever_cache:
+        return _bm25_retriever_cache[cache_key]
     
     # Filter documents in-memory
     user_docs = []
@@ -91,6 +99,8 @@ def get_user_bm25_retriever(user_id: str, source_ids: Optional[List[str]] = None
             metadata={"user_id": user_id, "filename": "System", "source_id": "system", "page_number": 1}
         )]
         
+    from langchain_community.retrievers import BM25Retriever
     retriever = BM25Retriever.from_documents(user_docs)
     retriever.k = 20
+    _bm25_retriever_cache[cache_key] = retriever
     return retriever

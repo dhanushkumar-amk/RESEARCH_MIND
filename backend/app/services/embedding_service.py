@@ -5,8 +5,6 @@ from app.core.config import settings
 if settings.hf_token:
     os.environ["HF_TOKEN"] = settings.hf_token
 
-from sentence_transformers import SentenceTransformer
-
 class EmbeddingService:
     _model = None
 
@@ -18,6 +16,7 @@ class EmbeddingService:
     def model(self):
         if EmbeddingService._model is None:
             print("Loading sentence-transformers model (all-MiniLM-L6-v2) locally...")
+            from sentence_transformers import SentenceTransformer
             try:
                 EmbeddingService._model = SentenceTransformer("all-MiniLM-L6-v2")
             except Exception as e:
@@ -25,6 +24,7 @@ class EmbeddingService:
                 if "HF_TOKEN" in os.environ:
                     print("Model load failed, likely due to an expired/invalid HF_TOKEN. Clearing token and retrying...")
                     os.environ.pop("HF_TOKEN", None)
+                    from sentence_transformers import SentenceTransformer
                     EmbeddingService._model = SentenceTransformer("all-MiniLM-L6-v2")
                 else:
                     raise e

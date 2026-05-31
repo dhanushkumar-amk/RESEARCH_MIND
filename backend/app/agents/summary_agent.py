@@ -21,6 +21,27 @@ from app.security.guard_pipeline import execute_output_guards
 
 logger = logging.getLogger("researchmind")
 
+def extract_string_content(content) -> str:
+    if isinstance(content, str):
+        return content
+    elif isinstance(content, list):
+        parts = []
+        for part in content:
+            if isinstance(part, dict):
+                if "text" in part:
+                    parts.append(part["text"])
+                elif "content" in part:
+                    parts.append(part["content"])
+                else:
+                    parts.append(str(part))
+            else:
+                parts.append(str(part))
+        return "".join(parts)
+    elif content is None:
+        return ""
+    else:
+        return str(content)
+
 # Initialize LangSmith client
 ls_client = None
 if settings.langchain_api_key:
@@ -186,7 +207,7 @@ async def summary_agent(state: AgentState, config: RunnableConfig) -> dict:
                     if chunk.response_metadata and "model_info" in chunk.response_metadata:
                         model_used = chunk.response_metadata["model_info"].get("name", model_used)
                     
-                    token = chunk.content
+                    token = extract_string_content(chunk.content)
                     full_answer += token
                     queue.put_nowait({
                         "event": "token",
@@ -194,7 +215,7 @@ async def summary_agent(state: AgentState, config: RunnableConfig) -> dict:
                     })
             else:
                 response = await resilient_llm.ainvoke(current_prompt, config=config)
-                full_answer = response.content
+                full_answer = extract_string_content(response.content)
                 if response.response_metadata and "model_info" in response.response_metadata:
                     model_used = response.response_metadata["model_info"].get("name", model_used)
         except Exception as e:
@@ -294,7 +315,7 @@ async def summary_agent(state: AgentState, config: RunnableConfig) -> dict:
     try:
         # Use primary model to fetch structured JSON
         report_response = await resilient_llm.ainvoke(report_prompt, config=config)
-        content = report_response.content.strip()
+        content = extract_string_content(report_response.content).strip()
         # Clean any markdown json wrapper
         if content.startswith("```json"):
             content = content[7:]

@@ -7,12 +7,26 @@ import tempfile
 from typing import List, Dict, Any, Tuple
 from datetime import datetime, timezone
 
-import mlflow
+import uuid
 from app.core.config import settings
 from app.core.database import get_database
 from app.evaluation.ragas_evaluator import RAGASEvaluator
 from app.mlflow.manager import BestConfigManager
-from app.mlflow.registry import register_config_model
+
+async def register_config_model(
+    config_type: str, 
+    run_id: str, 
+    config: Dict[str, Any], 
+    scores: Dict[str, float]
+) -> Dict[str, Any]:
+    """Stub to replace MLflow Model Registry registration."""
+    return {
+        "model_name": f"researchmind-{config_type}-config",
+        "registered": False,
+        "version": None,
+        "promoted_to_staging": False,
+        "message": "Model Registry disabled (MLflow removed)."
+    }
 
 # Import RAG steps dynamically to allow running individual pipeline operations
 from app.api.routes.chat import (
@@ -229,46 +243,8 @@ class ExperimentRunner:
         questions: List[str], 
         answers: List[str]
     ) -> str:
-        """Helper to run blocking MLflow calls in a thread pool."""
-        mlflow.set_tracking_uri(settings.mlflow_tracking_uri or "sqlite:///mlflow.db")
-        mlflow.set_experiment(settings.mlflow_experiment_rag)
-        
-        with mlflow.start_run() as run:
-            # Log params
-            mlflow.log_params(config)
-            
-            # Log metrics
-            mlflow.log_metrics(metrics)
-            
-            # Create local temporary files to upload as artifacts
-            with tempfile.TemporaryDirectory() as temp_dir:
-                q_path = os.path.join(temp_dir, "sample_questions.json")
-                a_path = os.path.join(temp_dir, "sample_answers.json")
-                r_path = os.path.join(temp_dir, "evaluation_report.json")
-                
-                with open(q_path, "w") as f:
-                    json.dump(questions, f, indent=2)
-                with open(a_path, "w") as f:
-                    json.dump(answers, f, indent=2)
-                with open(r_path, "w") as f:
-                    json.dump({
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                        "parameters": config,
-                        "metrics": metrics
-                    }, f, indent=2)
-                    
-                mlflow.log_artifact(q_path)
-                mlflow.log_artifact(a_path)
-                mlflow.log_artifact(r_path)
-                
-                # Log a dummy ConfigModel as the registered model target
-                from app.mlflow.registry import ConfigModel
-                mlflow.pyfunc.log_model(
-                    artifact_path="model",
-                    python_model=ConfigModel(config)
-                )
-                
-            return run.info.run_id
+        """Mock helper replacing MLflow logging."""
+        return f"run_{uuid.uuid4().hex[:12]}"
 
     @staticmethod
     async def run_agent_experiment(configs: List[Dict[str, Any]]) -> Tuple[Dict[str, Any], float, List[Dict[str, Any]]]:
@@ -499,53 +475,5 @@ class ExperimentRunner:
         tool_results: List[Dict[str, Any]],
         final_reports: List[Dict[str, Any]]
     ) -> str:
-        """Helper to run blocking MLflow agent logging calls in a thread pool."""
-        mlflow.set_tracking_uri(settings.mlflow_tracking_uri or "sqlite:///mlflow.db")
-        mlflow.set_experiment(settings.mlflow_experiment_agents)
-        
-        with mlflow.start_run() as run:
-            # Format list configurations to strings for MLflow parameters
-            mlflow_params = {}
-            for k, v in config.items():
-                if isinstance(v, list):
-                    mlflow_params[k] = str(v)
-                else:
-                    mlflow_params[k] = v
-                    
-            mlflow.log_params(mlflow_params)
-            
-            # Convert bool metrics to int for MLflow logging
-            mlflow_metrics = {}
-            for k, v in metrics.items():
-                if isinstance(v, bool):
-                    mlflow_metrics[k] = 1.0 if v else 0.0
-                else:
-                    mlflow_metrics[k] = float(v)
-                    
-            mlflow.log_metrics(mlflow_metrics)
-            
-            # Log artifacts
-            with tempfile.TemporaryDirectory() as temp_dir:
-                state_path = os.path.join(temp_dir, "agent_state.json")
-                tool_path = os.path.join(temp_dir, "tool_results.json")
-                report_path = os.path.join(temp_dir, "final_report.json")
-                
-                with open(state_path, "w") as f:
-                    json.dump(states, f, indent=2)
-                with open(tool_path, "w") as f:
-                    json.dump(tool_results, f, indent=2)
-                with open(report_path, "w") as f:
-                    json.dump(final_reports, f, indent=2)
-                    
-                mlflow.log_artifact(state_path)
-                mlflow.log_artifact(tool_path)
-                mlflow.log_artifact(report_path)
-                
-                # Log a dummy ConfigModel as the registered model target
-                from app.mlflow.registry import ConfigModel
-                mlflow.pyfunc.log_model(
-                    artifact_path="model",
-                    python_model=ConfigModel(config)
-                )
-                
-            return run.info.run_id
+        """Mock helper replacing MLflow agent logging."""
+        return f"run_{uuid.uuid4().hex[:12]}"

@@ -4,9 +4,6 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query
 from pydantic import BaseModel, Field
 
-import mlflow
-from mlflow.client import MlflowClient
-
 from app.core.config import settings
 from app.core.database import get_database
 from app.dependencies.auth import get_current_user
@@ -89,45 +86,26 @@ async def list_experiments(
     name_filter: Optional[str] = Query(None, alias="name"),
     current_user: dict = Depends(get_current_user)
 ):
-    """Return all experiments list, optionally filtered by name."""
-    tracking_uri = settings.mlflow_tracking_uri or "sqlite:///mlflow.db"
-    try:
-        mlflow.set_tracking_uri(tracking_uri)
-        client = MlflowClient()
-        exps = client.search_experiments()
-        
-        result = []
-        for exp in exps:
-            if name_filter and name_filter.lower() not in exp.name.lower():
-                continue
-                
-            result.append(ExperimentResponse(
-                experiment_id=exp.experiment_id,
-                name=exp.name,
-                artifact_location=exp.artifact_location,
-                lifecycle_stage=exp.lifecycle_stage,
-                tags=dict(exp.tags or {})
-            ))
-        return result
-    except Exception as e:
-        logger.error(f"[MLflow Endpoints] Failed to fetch experiments: {e}")
-        # Graceful fallback: return local default names
-        return [
-            ExperimentResponse(
-                experiment_id="0",
-                name=settings.mlflow_experiment_rag,
-                artifact_location="./artifacts",
-                lifecycle_stage="active",
-                tags={"project": "researchmind"}
-            ),
-            ExperimentResponse(
-                experiment_id="1",
-                name=settings.mlflow_experiment_agents,
-                artifact_location="./artifacts",
-                lifecycle_stage="active",
-                tags={"project": "researchmind"}
-            )
-        ]
+    """Return all experiments list (static fallbacks since MLflow is removed)."""
+    result = [
+        ExperimentResponse(
+            experiment_id="0",
+            name=settings.mlflow_experiment_rag or "researchmind-rag-config",
+            artifact_location="./artifacts",
+            lifecycle_stage="active",
+            tags={"project": "researchmind"}
+        ),
+        ExperimentResponse(
+            experiment_id="1",
+            name=settings.mlflow_experiment_agents or "researchmind-agent-runs",
+            artifact_location="./artifacts",
+            lifecycle_stage="active",
+            tags={"project": "researchmind"}
+        )
+    ]
+    if name_filter:
+        result = [exp for exp in result if name_filter.lower() in exp.name.lower()]
+    return result
 
 @router.get("/runs/{experiment_id}", response_model=List[RunResponse])
 async def list_runs(
@@ -136,43 +114,8 @@ async def list_runs(
     offset: int = Query(0, ge=0),
     current_user: dict = Depends(get_current_user)
 ):
-    """Return runs for a given experiment ID (paginated)."""
-    tracking_uri = settings.mlflow_tracking_uri or "sqlite:///mlflow.db"
-    try:
-        mlflow.set_tracking_uri(tracking_uri)
-        client = MlflowClient()
-        
-        # Paginated fetch
-        runs = client.search_runs(
-            experiment_ids=[experiment_id],
-            max_results=limit
-        )
-        
-        # Apply offset manually since MLflow pagination uses page tokens
-        paginated_runs = runs[offset : offset + limit]
-        
-        result = []
-        for r in paginated_runs:
-            start_time = datetime.fromtimestamp(r.info.start_time / 1000.0, tz=timezone.utc)
-            end_time = (
-                datetime.fromtimestamp(r.info.end_time / 1000.0, tz=timezone.utc)
-                if r.info.end_time
-                else None
-            )
-            
-            result.append(RunResponse(
-                run_id=r.info.run_id,
-                experiment_id=r.info.experiment_id,
-                status=r.info.status,
-                start_time=start_time,
-                end_time=end_time,
-                params=dict(r.data.params or {}),
-                metrics=dict(r.data.metrics or {})
-            ))
-        return result
-    except Exception as e:
-        logger.error(f"[MLflow Endpoints] Failed to fetch runs for {experiment_id}: {e}")
-        return []
+    """Return runs for a given experiment ID (empty since MLflow is removed)."""
+    return []
 
 @router.get("/best-config/{config_type}")
 async def get_best_config(
@@ -215,12 +158,7 @@ async def run_manual_experiment(
             detail="Invalid config_type. Must be 'rag' or 'agent'."
         )
         
-    tracking_uri = settings.mlflow_tracking_uri or "sqlite:///mlflow.db"
-    mlflow.set_tracking_uri(tracking_uri)
-    
-    exp_name = settings.mlflow_experiment_rag if config_type == "rag" else settings.mlflow_experiment_agents
-    exp = mlflow.get_experiment_by_name(exp_name)
-    experiment_id = exp.experiment_id if exp else "unknown"
+    experiment_id = "0" if config_type == "rag" else "1"
     
     if config_type == "rag":
         background_tasks.add_task(run_rag_experiment_task, payload.configs)
@@ -239,50 +177,11 @@ async def compare_runs(
     run_id_2: str = Query(..., description="Second MLflow run ID"),
     current_user: dict = Depends(get_current_user)
 ):
-    """Compare two MLflow runs side by side."""
-    tracking_uri = settings.mlflow_tracking_uri or "sqlite:///mlflow.db"
-    try:
-        mlflow.set_tracking_uri(tracking_uri)
-        client = MlflowClient()
-        
-        run1 = client.get_run(run_id_1)
-        run2 = client.get_run(run_id_2)
-        
-        metrics1 = run1.data.metrics or {}
-        metrics2 = run2.data.metrics or {}
-        params1 = run1.data.params or {}
-        params2 = run2.data.params or {}
-        
-        # Merge all metric keys
-        all_metrics_keys = set(metrics1.keys()).union(metrics2.keys())
-        metrics_comparison = {}
-        for k in all_metrics_keys:
-            metrics_comparison[k] = {
-                "run_1": float(metrics1.get(k, 0.0)),
-                "run_2": float(metrics2.get(k, 0.0))
-            }
-            
-        # Merge all param keys
-        all_params_keys = set(params1.keys()).union(params2.keys())
-        params_comparison = {}
-        for k in all_params_keys:
-            params_comparison[k] = {
-                "run_1": str(params1.get(k, "")),
-                "run_2": str(params2.get(k, ""))
-            }
-            
-        return CompareResponse(
-            run_id_1=run_id_1,
-            run_id_2=run_id_2,
-            metrics_comparison=metrics_comparison,
-            params_comparison=params_comparison
-        )
-    except Exception as e:
-        logger.error(f"[MLflow Endpoints] Failed to compare runs {run_id_1} and {run_id_2}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Could not compare runs: {e}"
-        )
+    """Compare two MLflow runs side by side (disabled since MLflow is removed)."""
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Run comparison is disabled because MLflow integration is removed."
+    )
 
 @router.get("/weekly-report")
 async def get_weekly_report(

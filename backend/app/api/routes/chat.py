@@ -14,14 +14,9 @@ import tiktoken
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableParallel, RunnableLambda
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_mongodb import MongoDBAtlasVectorSearch
-from langchain_community.retrievers import BM25Retriever
-from langchain_community.cross_encoders import HuggingFaceCrossEncoder
-from langchain_classic.retrievers.document_compressors import CrossEncoderReranker
 from langchain_litellm import ChatLiteLLM
 from langchain_core.callbacks import BaseCallbackHandler
-from langchain_classic.retrievers import EnsembleRetriever
 from langchain_core.retrievers import BaseRetriever
 from langchain_classic.memory import ConversationSummaryMemory
 
@@ -42,6 +37,7 @@ def get_embeddings():
     global _embeddings
     if _embeddings is None:
         print("[RAG Pipeline] Lazily loading HuggingFaceEmbeddings...")
+        from langchain_huggingface import HuggingFaceEmbeddings
         # Temporarily clear HF_TOKEN during init to prevent expired token exceptions on public models
         hf_token = os.environ.pop("HF_TOKEN", None)
         try:
@@ -80,6 +76,8 @@ def get_compressor():
     global _compressor
     if _compressor is None:
         print("[RAG Pipeline] Lazily loading Cross-Encoder model & Reranker...")
+        from langchain_community.cross_encoders import HuggingFaceCrossEncoder
+        from langchain_classic.retrievers.document_compressors import CrossEncoderReranker
         # Temporarily clear HF_TOKEN during init to prevent expired token exceptions on public models
         hf_token = os.environ.pop("HF_TOKEN", None)
         try:
@@ -95,15 +93,17 @@ def get_compressor():
 
 # -------------------------------------------------------------
 # 3. INITIALIZE BM25 RETRIEVER IN-MEMORY CACHE (Step 3)
-# -------------------------------------------------------------
 all_documents_cache: List[Document] = []
+# Cache built BM25Retriever instances to avoid rebuilding on every chat request
+_bm25_retriever_cache = {}
 
 async def init_bm25_retriever():
     """
     Step 3: Fetch all documents from MongoDB chunks collection on startup.
     Keeps BM25 index in memory and supports refreshing.
     """
-    global all_documents_cache
+    global all_documents_cache, _bm25_retriever_cache
+    _bm25_retriever_cache.clear() # Invalidate cache
     try:
         db = get_database()
         cursor = db.chunks.find(
@@ -131,12 +131,17 @@ async def init_bm25_retriever():
     except Exception as e:
         print(f"[RAG Pipeline] Failed to initialize BM25 retriever cache: {e}")
 
-def get_user_bm25_retriever(user_id: str, source_ids: Optional[List[str]] = None) -> BM25Retriever:
+def get_user_bm25_retriever(user_id: str, source_ids: Optional[List[str]] = None) -> "BM25Retriever":
     """
     Filters the global cache in-memory by user_id and source_ids,
-    then returns a BM25Retriever instance with k=20.
+    then returns a cached or newly compiled BM25Retriever instance with k=20.
     """
-    global all_documents_cache
+    global all_documents_cache, _bm25_retriever_cache
+    
+    # Generate a cache key
+    cache_key = user_id if not source_ids else (user_id, tuple(sorted(source_ids)))
+    if cache_key in _bm25_retriever_cache:
+        return _bm25_retriever_cache[cache_key]
     
     # Filter documents in-memory
     user_docs = []
@@ -153,8 +158,10 @@ def get_user_bm25_retriever(user_id: str, source_ids: Optional[List[str]] = None
         # If no documents, return a dummy document retriever to prevent initialization error
         user_docs = [Document(page_content="Placeholder for empty library.", metadata={"user_id": user_id, "filename": "System"})]
         
+    from langchain_community.retrievers import BM25Retriever
     retriever = BM25Retriever.from_documents(user_docs)
     retriever.k = 20
+    _bm25_retriever_cache[cache_key] = retriever
     return retriever
 
 # -------------------------------------------------------------
@@ -174,13 +181,13 @@ FALLBACK_MODELS = [
     "gemini/gemini-1.5-flash"
 ]
 
-# Configure primary ChatLiteLLM
+# Configure primary ChatLiteLLM (increased timeout and retries for stability under rate limits)
 primary_llm = ChatLiteLLM(
     model=FALLBACK_MODELS[0],
     temperature=0.1,
     max_tokens=1000,
-    request_timeout=10.0,
-    max_retries=2
+    request_timeout=30.0,
+    max_retries=5
 )
 
 # Configure fallback ChatLiteLLM models
@@ -189,8 +196,8 @@ fallback_llms = [
         model=model_name,
         temperature=0.1,
         max_tokens=1000,
-        request_timeout=10.0,
-        max_retries=2
+        request_timeout=30.0,
+        max_retries=5
     )
     for model_name in FALLBACK_MODELS[1:]
 ]
@@ -244,6 +251,7 @@ def merge_hybrid_results(vector_docs: list[Document], bm25_docs: list[Document],
     r1 = PrecomputedRetriever(docs=vector_docs)
     r2 = PrecomputedRetriever(docs=bm25_docs)
     
+    from langchain_classic.retrievers import EnsembleRetriever
     ensemble = EnsembleRetriever(
         retrievers=[r1, r2],
         weights=[vector_weight, bm25_weight]

@@ -58,9 +58,7 @@ def mock_evaluate(dataset, metrics, *args, **kwargs):
     }
 ragas.evaluate = mock_evaluate
 
-# Mock MLflow logging to prevent local socket errors
-import app.evaluation.mlflow_logger
-app.evaluation.mlflow_logger.log_evaluation_to_mlflow = MagicMock()
+
 
 # Now import RAGAS Evaluator and Router
 from app.evaluation.ragas_evaluator import RAGASEvaluator

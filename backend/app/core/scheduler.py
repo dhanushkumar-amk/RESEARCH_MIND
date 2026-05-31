@@ -47,9 +47,6 @@ def start_scheduler():
         # Add daily RAGAS evaluation job at 2 AM
         from app.evaluation.scheduler import run_nightly_evaluation
         scheduler.add_job(run_nightly_evaluation, "cron", hour=2, minute=0, id="nightly_evaluation_job", replace_existing=True)
-        # Add weekly MLflow pipeline experiment job on Sunday at 3 AM
-        from app.mlflow.scheduler import run_weekly_experiments
-        scheduler.add_job(run_weekly_experiments, "cron", day_of_week="sun", hour=3, minute=0, id="weekly_experiments_job", replace_existing=True)
         scheduler.start()
         print("Background scheduler started successfully.")
 

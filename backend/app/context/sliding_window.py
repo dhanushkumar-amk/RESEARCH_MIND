@@ -9,6 +9,27 @@ from app.core.database import get_database
 
 logger = logging.getLogger("researchmind")
 
+def extract_string_content(content) -> str:
+    if isinstance(content, str):
+        return content
+    elif isinstance(content, list):
+        parts = []
+        for part in content:
+            if isinstance(part, dict):
+                if "text" in part:
+                    parts.append(part["text"])
+                elif "content" in part:
+                    parts.append(part["content"])
+                else:
+                    parts.append(str(part))
+            else:
+                parts.append(str(part))
+        return "".join(parts)
+    elif content is None:
+        return ""
+    else:
+        return str(content)
+
 class SlidingWindowMemory:
     def __init__(self):
         # Initialize LLM for summarizing dropped messages
@@ -87,7 +108,7 @@ class SlidingWindowMemory:
             logger.info(f"[SlidingWindowMemory] Window size exceeded. Summarizing {num_dropped} dropped messages...")
             try:
                 response = await self.llm.ainvoke(prompt)
-                new_summary = response.content.strip()
+                new_summary = extract_string_content(response.content).strip()
                 record["summary"] = new_summary
             except Exception as e:
                 logger.error(f"[SlidingWindowMemory] Failed to summarize dropped messages: {e}", exc_info=True)

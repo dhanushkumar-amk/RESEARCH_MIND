@@ -7,9 +7,11 @@ from typing import Annotated
 
 from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
-
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parents[2]
+# Load env variables and override existing ones so they take effect on reload
+load_dotenv(dotenv_path=BASE_DIR / ".env", override=True)
 
 
 class Settings(BaseSettings):

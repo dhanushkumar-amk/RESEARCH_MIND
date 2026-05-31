@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from app.core.config import settings
@@ -92,7 +93,8 @@ class BestConfigManager:
                 ls_client = Client(api_url="https://api.smith.langchain.com", api_key=settings.langchain_api_key)
                 
                 now = datetime.now(timezone.utc)
-                ls_client.create_run(
+                await asyncio.to_thread(
+                    ls_client.create_run,
                     name=f"Update Best Config: {config_type}",
                     run_type="chain",
                     inputs={"config_type": config_type, "config": config},
@@ -140,7 +142,8 @@ class BestConfigManager:
                     from langsmith import Client
                     ls_client = Client(api_url="https://api.smith.langchain.com", api_key=settings.langchain_api_key)
                     now = datetime.now(timezone.utc)
-                    ls_client.create_run(
+                    await asyncio.to_thread(
+                        ls_client.create_run,
                         name="Apply Best Config on Startup",
                         run_type="chain",
                         inputs={"status": "initialization"},
